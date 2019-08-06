@@ -4,25 +4,45 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-
-var _fs = require("fs");
-
-var _MysqlReq = _interopRequireDefault(require("./MysqlReq"));
-
-var _logger = _interopRequireDefault(require("./utils/logger"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+let _logger = null;
+let _requestor = null;
+let _readFileSync = null;
+let _existsSync = null;
 
 class MysqlDump {
+  static inject({
+    requestor,
+    logger,
+    readFileSync,
+    existsSync
+  }) {
+    _logger = logger || null;
+    requestor && MysqlDump.setRequestor(requestor);
+    _readFileSync = readFileSync || null;
+    _existsSync = existsSync || null;
+  }
+
+  static setRequestor(req) {
+    _requestor = req;
+  }
+
+  static getRequestor() {
+    if (!_requestor) {
+      throw new Error('Must set Requestor first');
+    }
+
+    return _requestor;
+  }
+
   static async executeSqlFileOnExistingConnection(filePath) {
-    if (!(0, _fs.existsSync)(filePath)) {
+    if (!_existsSync(filePath)) {
       throw new Error('File path does not exists ');
     }
 
-    _logger.default.log('executeSchemaOntoExistingConnection');
+    _logger.log('executeSchemaOntoExistingConnection');
 
-    await _MysqlReq.default.query({
-      sql: (0, _fs.readFileSync)(filePath, 'utf-8')
+    await MysqlDump.getRequestor().query({
+      sql: _readFileSync(filePath, 'utf-8')
     });
   }
 
@@ -31,7 +51,7 @@ class MysqlDump {
     connectionConfig,
     disconnectOnFinish
   }) {
-    _logger.default.log(`MysqlDump:executeSqlFile(${filePath})`);
+    _logger.log(`MysqlDump:executeSqlFile(${filePath})`);
 
     if (!connectionConfig) {
       let letMysqlReqLoadDefaultEnvConfig = true;
@@ -42,12 +62,10 @@ class MysqlDump {
       multipleStatements,
       ...connectionConfigWithoutMS
     } = connectionConfig;
-
-    _MysqlReq.default.setConnectionConfig({
+    MysqlDump.getRequestor().setConnectionConfig({
       multipleStatements: true,
       ...connectionConfigWithoutMS
     });
-
     await MysqlDump.executeSqlFileOnExistingConnection(filePath);
 
     if (typeof disconnectOnFinish === 'undefined') {
@@ -55,7 +73,7 @@ class MysqlDump {
     }
 
     if (disconnectOnFinish) {
-      await _MysqlReq.default.disconnect();
+      await MysqlDump.getRequestor().disconnect();
     }
   }
 

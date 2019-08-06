@@ -1,20 +1,52 @@
-import { readFileSync, existsSync } from 'fs';
-import MysqlReq from './MysqlReq';
-import logger from 'saylo';
+let _logger = { log: () => {} };
+let _requestor = null;
+let _readFileSync = null;
+let _existsSync = null;
 
 class MysqlDump {
+
+  static inject({ requestor, logger, readFileSync, existsSync }) {
+    logger && MysqlDump.setLogger(logger);
+    requestor && MysqlDump.setRequestor(requestor);
+    _readFileSync = readFileSync || null;
+    _existsSync = existsSync || null;
+  }
+
+  static setRequestor(req) {
+    _requestor = req;
+  }
+
+  static getRequestor() {
+    if (!_requestor) {
+      throw new Error('Must set Requestor first');
+    }
+    return _requestor;
+  }
+
+  static setLogger(logger) {
+    _logger = logger;
+  }
+
+  static getLogger() {
+    if (null === _logger) {
+      throw new Error('You must set the logger first');
+    }
+    return _logger;
+  }
+
+
   static async executeSqlFileOnExistingConnection(filePath) {
-    if (!existsSync(filePath)) {
+    if (!_existsSync(filePath)) {
       throw new Error('File path does not exists ');
     }
-    logger.log('executeSchemaOntoExistingConnection');
-    await MysqlReq.query({
-      sql: readFileSync(filePath, 'utf-8'),
+    _logger.log('executeSchemaOntoExistingConnection');
+    await MysqlDump.getRequestor().query({
+      sql: _readFileSync(filePath, 'utf-8'),
     });
   }
 
   static async executeSqlFile({ filePath, connectionConfig, disconnectOnFinish }) {
-    logger.log(`MysqlDump:executeSqlFile(${filePath})`);
+    _logger.log(`MysqlDump:executeSqlFile(${filePath})`);
     if (!connectionConfig) {
       let letMysqlReqLoadDefaultEnvConfig = true;
       connectionConfig = letMysqlReqLoadDefaultEnvConfig && {};
@@ -22,7 +54,7 @@ class MysqlDump {
 
     let { multipleStatements, ...connectionConfigWithoutMS } = connectionConfig;
 
-    MysqlReq.setConnectionConfig({
+    MysqlDump.getRequestor().setConnectionConfig({
       multipleStatements: true,
       ...connectionConfigWithoutMS
     });
@@ -34,7 +66,7 @@ class MysqlDump {
     }
 
     if (disconnectOnFinish) {
-      await MysqlReq.disconnect();
+      await MysqlDump.getRequestor().disconnect();
     }
   }
 }

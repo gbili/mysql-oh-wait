@@ -4,19 +4,36 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-
-var _mysql = _interopRequireDefault(require("mysql"));
-
-var _logger = _interopRequireDefault(require("./utils/logger"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-let mysqlConnection = null;
-let connectionConfig = null;
-let locked = false;
-let lockedStatePromise = null;
+let _logger = null;
+let _adapter = null;
+let _mysqlConnection = null;
+let _connectionConfig = null;
+let _locked = false;
+let _lockedStatePromise = null;
 
 class MysqlReq {
+  static inject({
+    adapter,
+    logger,
+    connectionConfig
+  }) {
+    _logger = logger || null;
+    adapter && MysqlReq.setAdapter(adapter);
+    connectionConfig && MysqlReq.setConnectionConfig(connectionConfig);
+  }
+
+  static setAdapter(mysqlAdapter) {
+    _adapter = mysqlAdapter;
+  }
+
+  static getAdapter() {
+    if (null === _adapter) {
+      throw new Error('You must set the adapter first');
+    }
+
+    return _adapter;
+  }
+
   static setConnectionConfig({
     host,
     user,
@@ -36,32 +53,32 @@ class MysqlReq {
       };
     }
 
-    connectionConfig = {
+    _connectionConfig = {
       host: host || envVarNames && process.env[envVarNames.host] || null,
       user: user || envVarNames && process.env[envVarNames.user] || null,
       password: password || envVarNames && process.env[envVarNames.password] || null,
       database: database || envVarNames && process.env[envVarNames.database] || null,
       ...rest
     };
-    return connectionConfig;
+    return _connectionConfig;
   }
 
   static getConnectionConfig() {
-    return connectionConfig || MysqlReq.setConnectionConfig({});
+    return _connectionConfig || MysqlReq.setConnectionConfig({});
   }
 
   static createConnection() {
-    if (null !== mysqlConnection) {
+    if (null !== _mysqlConnection) {
       throw new Error('Cannot create another connection');
     }
 
-    mysqlConnection = _mysql.default.createConnection(MysqlReq.getConnectionConfig());
+    _mysqlConnection = MysqlReq.getAdapter().createConnection(MysqlReq.getConnectionConfig());
 
-    _logger.default.log('MysqlReq.createConnection(), Connection created');
+    _logger.log('MysqlReq.createConnection(), Connection created');
   }
 
   static hasConnection() {
-    return mysqlConnection !== null;
+    return _mysqlConnection !== null;
   }
 
   static getConnection() {
@@ -69,7 +86,7 @@ class MysqlReq {
       throw new Error('You must create a connection first');
     }
 
-    return mysqlConnection;
+    return _mysqlConnection;
   }
 
   static async removeConnection() {
@@ -78,9 +95,9 @@ class MysqlReq {
     if (MysqlReq.hasConnection()) {
       await MysqlReq.disconnect();
 
-      _logger.default.log('MysqlReq.removeConnection(), Connection removed', mysqlConnection);
+      _logger.log('MysqlReq.removeConnection(), Connection removed', _mysqlConnection);
 
-      mysqlConnection = null;
+      _mysqlConnection = null;
       didRemove = true;
     }
 
@@ -100,30 +117,30 @@ class MysqlReq {
     await MysqlReq.awaitLockStatePromises();
 
     if (await MysqlReq.isConnected()) {
-      _logger.default.log('MysqlReq:connect(), Already connected');
+      _logger.log('MysqlReq:connect(), Already connected');
 
       return MysqlReq.getThreadId();
     }
 
     if (!MysqlReq.hasConnection()) {
-      _logger.default.log('MysqlReq:connect(), No connection');
+      _logger.log('MysqlReq:connect(), No connection');
 
       MysqlReq.createConnection();
     }
 
-    _logger.default.log('MysqlReq:connect(), Connecting...');
+    _logger.log('MysqlReq:connect(), Connecting...');
 
     try {
-      _logger.default.log('MysqlReq:connect(), locking');
+      _logger.log('MysqlReq:connect(), locking');
 
       MysqlReq.lock(new Promise((resolve, reject) => {
         MysqlReq.getConnection().connect(err => err && reject(err) || resolve(true));
       }));
       await MysqlReq.awaitLockStatePromises();
 
-      _logger.default.log(`MysqlReq:connect(), Connected to database, threadId: ${MysqlReq.getThreadId()}`);
+      _logger.log(`MysqlReq:connect(), Connected to database, threadId: ${MysqlReq.getThreadId()}`);
     } catch (err) {
-      _logger.default.log('MysqlReq:connect(), trouble connecting threw: ', err);
+      _logger.log('MysqlReq:connect(), trouble connecting threw: ', err);
     }
 
     return MysqlReq.getThreadId();
@@ -133,28 +150,28 @@ class MysqlReq {
     await MysqlReq.awaitLockStatePromises();
 
     if (!(await MysqlReq.isConnected())) {
-      _logger.default.log('MysqlReq:disconnect(), isConnected: false');
+      _logger.log('MysqlReq:disconnect(), isConnected: false');
 
       return;
     }
 
-    _logger.default.log('MysqlReq:disconnect(), isConnected: true', MysqlReq.getThreadId());
+    _logger.log('MysqlReq:disconnect(), isConnected: true', MysqlReq.getThreadId());
 
     try {
-      _logger.default.log('MysqlReq:disconnect(), locking');
+      _logger.log('MysqlReq:disconnect(), locking');
 
       MysqlReq.lock(new Promise((resolve, reject) => {
         MysqlReq.getConnection().end(err => err && reject(err) || resolve(true));
       }));
       await MysqlReq.awaitLockStatePromises();
-      mysqlConnection = null;
+      _mysqlConnection = null;
     } catch (err) {
-      _logger.default.log('MysqlReq:disconnect(), difficulties disconnecting', err);
+      _logger.log('MysqlReq:disconnect(), difficulties disconnecting', err);
     }
 
     let isConn = await MysqlReq.isConnected();
 
-    _logger.default.log('MysqlReq:disconnect() end isConnected:', isConn, ' threadId', MysqlReq.getThreadId());
+    _logger.log('MysqlReq:disconnect() end isConnected:', isConn, ' threadId', MysqlReq.getThreadId());
   }
 
   static async query({
@@ -167,7 +184,7 @@ class MysqlReq {
     let isConn = await MysqlReq.isConnected();
 
     if (!isConn) {
-      _logger.default.log('MysqlReq.query() You did not connect manually, attempting automatic connection');
+      _logger.log('MysqlReq.query() You did not connect manually, attempting automatic connection');
 
       await MysqlReq.connect();
     }
@@ -179,7 +196,7 @@ class MysqlReq {
         if (values) MysqlReq.getConnection().query(sql, values, cb);else MysqlReq.getConnection().query(sql, cb);
       });
     } catch (err) {
-      _logger.default.log('MysqlReq.query() failed', {
+      _logger.log('MysqlReq.query() failed', {
         sqlMessage: err.sqlMessage,
         sql: err.sql,
         sqlState: err.sqlState
@@ -196,35 +213,35 @@ class MysqlReq {
   static async awaitLockStatePromises() {
     if (MysqlReq.isLocked()) {
       try {
-        await lockedStatePromise;
+        await _lockedStatePromise;
 
-        _logger.default.log('MysqlReq:awaitLockStatePromises(), finished waiting lockedStatePromise');
+        _logger.log('MysqlReq:awaitLockStatePromises(), finished waiting _lockedStatePromise');
 
         MysqlReq.unlock();
       } catch (err) {
-        _logger.default.log('MysqlReq:awaitLockStatePromises(), error', err);
+        _logger.log('MysqlReq:awaitLockStatePromises(), error', err);
       }
     }
   }
 
   static lock(promise) {
-    lockedStatePromise = promise;
-    locked = true;
+    _lockedStatePromise = promise;
+    _locked = true;
 
-    _logger.default.log('MysqlReq:lock(), locked:', locked);
+    _logger.log('MysqlReq:lock(), _locked:', _locked);
   }
 
   static unlock() {
-    lockedStatePromise = null;
-    locked = false;
+    _lockedStatePromise = null;
+    _locked = false;
 
-    _logger.default.log('MysqlReq:unlock(), locked:', locked);
+    _logger.log('MysqlReq:unlock(), _locked:', _locked);
   }
 
   static isLocked() {
-    _logger.default.log('MysqlReq:isLocked(), locked:', locked);
+    _logger.log('MysqlReq:isLocked(), _locked:', _locked);
 
-    return locked;
+    return _locked;
   }
 
 }

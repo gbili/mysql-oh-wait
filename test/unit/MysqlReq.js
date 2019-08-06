@@ -1,6 +1,5 @@
 import { expect } from 'chai';
-import MysqlReq from '../src/MysqlReq';
-import logger from 'saylo';
+import MysqlReq from '../../src/MysqlReq';
 
 let setup = async function () {
   await MysqlReq.removeConnection();
@@ -109,6 +108,35 @@ describe(`MysqlReq`, function() {
       expect(MysqlReq.hasConnection()).to.be.equal(false);
       expect(await MysqlReq.query({sql: 'SHOW TABLES', after: res => 'altered'})).to.be.equal('altered');
       await setup();
+    });
+  });
+
+  describe(`MysqlReq.inject({adapter})`, async function() {
+    it('should change adapter if passed as param', async function() {
+      let adapter = MysqlReq.getAdapter();
+      let otherAdapter = 'fake';
+      MysqlReq.inject({ adapter: otherAdapter });
+      expect(MysqlReq.getAdapter()).to.be.equal(otherAdapter);
+      MysqlReq.inject({ adapter });
+      expect(MysqlReq.getAdapter()).to.be.equal(adapter);
+    });
+
+    it('should change the logger if passed as param', async function() {
+      let logger = MysqlReq.getLogger();
+      let otherLogger = () => {};
+      MysqlReq.inject({ logger: otherLogger });
+      expect(MysqlReq.getLogger()).to.be.equal(otherLogger);
+      MysqlReq.inject({ logger });
+      expect(MysqlReq.getLogger()).to.be.equal(logger);
+    });
+
+    it('should change connectionConfig if passed as param', async function() {
+      let config = MysqlReq.getConnectionConfig();
+      let otherConfig = {};
+      MysqlReq.inject({ connectionConfig: otherConfig });
+      expect(MysqlReq.getConnectionConfig()).to.not.be.equal(config);
+      MysqlReq.inject({ connectionConfig: config });
+      expect(MysqlReq.getConnectionConfig()).to.be.deep.equal(config);
     });
   });
 });
