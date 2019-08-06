@@ -1,5 +1,5 @@
 import mysql from 'mysql';
-import logger from './utils/logger';
+import logger from 'saylo';
 
 let mysqlConnection = null;
 let connectionConfig = null;

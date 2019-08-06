@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import MysqlReq from '../src/MysqlReq';
-import logger from '../src/utils/logger';
+import logger from 'saylo';
 
 let setup = async function () {
   await MysqlReq.removeConnection();

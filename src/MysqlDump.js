@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'fs';
 import MysqlReq from './MysqlReq';
-import logger from './utils/logger';
+import logger from 'saylo';
 
 class MysqlDump {
   static async executeSqlFileOnExistingConnection(filePath) {
