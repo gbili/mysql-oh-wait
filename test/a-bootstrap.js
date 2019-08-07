@@ -17,8 +17,8 @@ let bootstrapped = false;
 describe('Global Bootstrapping', function() {
 
   before(async () => {
-    bootstrapped = true;
     injectDependencies();
+    bootstrapped = true;
   });
 
   it('bootstraps properly', function () {
