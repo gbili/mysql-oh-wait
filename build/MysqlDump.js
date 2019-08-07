@@ -48,7 +48,10 @@ class MysqlDump {
     return _logger;
   }
 
-  static async executeSqlFileOnExistingConnection(filePath) {
+  static async executeSqlFileOnExistingConnection({
+    filePath,
+    disconnectOnFinish
+  }) {
     if (!_existsSync(filePath)) {
       throw new Error('File path does not exists ');
     }
@@ -58,6 +61,10 @@ class MysqlDump {
     await MysqlDump.getRequestor().query({
       sql: _readFileSync(filePath, 'utf-8')
     });
+
+    if (disconnectOnFinish) {
+      await MysqlDump.getRequestor().disconnect();
+    }
   }
 
   static async executeSqlFile({
@@ -79,15 +86,15 @@ class MysqlDump {
       multipleStatements: true,
       ...connectionConfigWithoutMS
     });
-    await MysqlDump.executeSqlFileOnExistingConnection(filePath);
 
     if (typeof disconnectOnFinish === 'undefined') {
       disconnectOnFinish = true;
     }
 
-    if (disconnectOnFinish) {
-      await MysqlDump.getRequestor().disconnect();
-    }
+    await MysqlDump.executeSqlFileOnExistingConnection({
+      filePath,
+      disconnectOnFinish
+    });
   }
 
 }
