@@ -8,7 +8,7 @@ let setup = async function () {
 describe(`MysqlReq`, function() {
   describe(`MysqlReq.setConnectionConfig()`, function() {
     it('should be able to load connection config from env variables and return it', async function() {
-      expect(MysqlReq.setConnectionConfig({ multipleStatements: false })).to.deep.equal({ 
+      expect(MysqlReq.setConnectionConfig({ multipleStatements: false })).to.deep.equal({
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,

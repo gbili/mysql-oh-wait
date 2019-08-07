@@ -16,7 +16,7 @@ describe(`MysqlDump`, function() {
           host: 'TEST_DB_HOST',
           user: 'TEST_DB_USER',
           password: 'TEST_DB_PASSWORD',
-          database: 'TEST_DB_DATABASE',
+          database: 'TEST_DB_NAME',
         },
       };
       await MysqlDump.executeSqlFile({filePath, connectionConfig});
@@ -30,7 +30,7 @@ describe(`MysqlDump`, function() {
           host: 'TEST_DB_HOST',
           user: 'TEST_DB_USER',
           password: 'TEST_DB_PASSWORD',
-          database: 'TEST_DB_DATABASE',
+          database: 'TEST_DB_NAME',
         },
       };
       await MysqlDump.executeSqlFile({filePath, connectionConfig, disconnectOnFinish: false});

@@ -47,9 +47,9 @@ class MysqlDump {
 
   static async executeSqlFile({ filePath, connectionConfig, disconnectOnFinish }) {
     _logger.log(`MysqlDump:executeSqlFile(${filePath})`);
+
     if (!connectionConfig) {
-      let letMysqlReqLoadDefaultEnvConfig = true;
-      connectionConfig = letMysqlReqLoadDefaultEnvConfig && {};
+      connectionConfig = {};
     }
 
     let { multipleStatements, ...connectionConfigWithoutMS } = connectionConfig;

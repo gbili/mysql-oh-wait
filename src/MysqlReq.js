@@ -99,8 +99,8 @@ class MysqlReq {
     let didRemove = false;
     if (MysqlReq.hasConnection()) {
       await MysqlReq.disconnect();
-      MysqlReq.getLogger().log('MysqlReq.removeConnection(), Connection removed', _mysqlConnection);
       _mysqlConnection = null;
+      MysqlReq.getLogger().log('MysqlReq.removeConnection(), Connection removed', _mysqlConnection);
       didRemove = true;
     }
     return didRemove;
