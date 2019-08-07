@@ -9,6 +9,12 @@ Object.defineProperty(exports, "MysqlReq", {
     return _MysqlReq.default;
   }
 });
+Object.defineProperty(exports, "MysqlInstantiatableReq", {
+  enumerable: true,
+  get: function () {
+    return _MysqlInstantiatableReq.default;
+  }
+});
 Object.defineProperty(exports, "MysqlDump", {
   enumerable: true,
   get: function () {
@@ -18,6 +24,8 @@ Object.defineProperty(exports, "MysqlDump", {
 exports.default = void 0;
 
 var _MysqlReq = _interopRequireDefault(require("./MysqlReq"));
+
+var _MysqlInstantiatableReq = _interopRequireDefault(require("./MysqlInstantiatableReq"));
 
 var _MysqlDump = _interopRequireDefault(require("./MysqlDump"));
 
