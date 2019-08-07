@@ -4,7 +4,9 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-let _logger = null;
+let _logger = {
+  log: () => {}
+};
 let _requestor = null;
 let _readFileSync = null;
 let _existsSync = null;
@@ -16,7 +18,7 @@ class MysqlDump {
     readFileSync,
     existsSync
   }) {
-    _logger = logger || null;
+    logger && MysqlDump.setLogger(logger);
     requestor && MysqlDump.setRequestor(requestor);
     _readFileSync = readFileSync || null;
     _existsSync = existsSync || null;
@@ -32,6 +34,18 @@ class MysqlDump {
     }
 
     return _requestor;
+  }
+
+  static setLogger(logger) {
+    _logger = logger;
+  }
+
+  static getLogger() {
+    if (null === _logger) {
+      throw new Error('You must set the logger first');
+    }
+
+    return _logger;
   }
 
   static async executeSqlFileOnExistingConnection(filePath) {

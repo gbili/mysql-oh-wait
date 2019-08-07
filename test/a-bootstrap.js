@@ -9,7 +9,7 @@ import { expect } from 'chai';
 
 const injectDependencies = function () {
   logger.log('injectingDependencies');
-  MysqlReq.inject({ adapter: mysql, logger });
+  MysqlReq.inject({ adapter: mysql, logger, env: process.env });
   MysqlDump.inject({ requestor: MysqlReq, logger, readFileSync, existsSync });
 }
 

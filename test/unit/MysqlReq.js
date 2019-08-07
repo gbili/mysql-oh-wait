@@ -111,7 +111,7 @@ describe(`MysqlReq`, function() {
     });
   });
 
-  describe(`MysqlReq.inject({adapter})`, async function() {
+  describe(`MysqlReq.inject({adapter, logger, env, connectionConfig})`, async function() {
     it('should change adapter if passed as param', async function() {
       let adapter = MysqlReq.getAdapter();
       let otherAdapter = 'fake';
@@ -137,6 +137,15 @@ describe(`MysqlReq`, function() {
       expect(MysqlReq.getConnectionConfig()).to.not.be.equal(config);
       MysqlReq.inject({ connectionConfig: config });
       expect(MysqlReq.getConnectionConfig()).to.be.deep.equal(config);
+    });
+
+    it('should set env if passed as param', async function() {
+      let env = MysqlReq.getEnv();
+      let other = {};
+      MysqlReq.inject({ env: other });
+      expect(MysqlReq.getEnv()).to.not.be.equal(env);
+      MysqlReq.inject({ env: env });
+      expect(MysqlReq.getEnv()).to.be.deep.equal(env);
     });
   });
 });

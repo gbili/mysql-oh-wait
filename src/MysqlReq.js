@@ -1,4 +1,5 @@
 let _logger = { log: () => {} };
+let _env = {};
 let _adapter = null;
 let _mysqlConnection = null;
 let _connectionConfig = null;
@@ -7,11 +8,24 @@ let _lockedStatePromise = null;
 
 class MysqlReq {
 
-  static inject({ adapter, logger, connectionConfig }) {
+  static inject({ adapter, logger, env, connectionConfig }) {
     logger && MysqlReq.setLogger(logger);
     adapter && MysqlReq.setAdapter(adapter);
+    env && MysqlReq.setEnv(env);
     connectionConfig && MysqlReq.setConnectionConfig(connectionConfig);
   }
+
+  static setEnv(env) {
+    _env = env;
+  }
+
+  static getEnv() {
+    if (null === _env) {
+      throw new Error('You must set the adapter first');
+    }
+    return _env;
+  }
+
 
   static setAdapter(mysqlAdapter) {
     _adapter = mysqlAdapter;
@@ -48,10 +62,10 @@ class MysqlReq {
     }
 
     _connectionConfig = {
-      host: host || (envVarNames && process.env[envVarNames.host] ) || null,
-      user: user || (envVarNames && process.env[envVarNames.user] ) || null,
-      password: password || (envVarNames && process.env[envVarNames.password] ) || null,
-      database: database || (envVarNames && process.env[envVarNames.database] ) || null,
+      host: host || (envVarNames && _env[envVarNames.host] ) || null,
+      user: user || (envVarNames && _env[envVarNames.user] ) || null,
+      password: password || (envVarNames && _env[envVarNames.password] ) || null,
+      database: database || (envVarNames && _env[envVarNames.database] ) || null,
       ...rest
     };
 
