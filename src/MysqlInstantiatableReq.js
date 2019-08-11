@@ -150,10 +150,11 @@ class MysqlInstantiatableReq {
       await this.connect();
     }
     try {
+      const connection = this.getConnection();
       res = await (new Promise((resolve, reject) => {
         const cb = (err, result) => (err ? reject(err) : resolve(result));
-        if (values) this.getConnection().query(sql, values, cb);
-        else this.getConnection().query(sql, cb);
+        if (values) connection.query(sql, values, cb);
+        else connection.query(sql, cb);
       }));
     } catch (err) {
       this.getLogger().log('this.query() failed', {sqlMessage: err.sqlMessage, sql: err.sql, sqlState: err.sqlState}, err);
