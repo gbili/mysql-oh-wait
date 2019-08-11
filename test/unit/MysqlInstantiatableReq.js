@@ -4,6 +4,9 @@ import logger from 'saylo';
 import MysqlInstantiatableReq from '../../src/MysqlInstantiatableReq';
 
 describe(`MysqlInstantiatableReq`, function() {
+
+  logger.turnOn('debug');
+
   describe(`MysqlInstantiatableReq.constructor({adapter, logger, connectionConfig})`, function() {
     it('should be able to connect with adapter and connectionConfig params', async function() {
       const config = {
