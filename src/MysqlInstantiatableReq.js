@@ -190,7 +190,7 @@ class MysqlInstantiatableReq {
         await this.lockedStatePromise;
         this.getLogger().debug('this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
 
-        this.unlock();
+        await this.unlock();
 
       } catch (err) {
         this.getLogger().debug('this:awaitLockStatePromises(), error', err);
@@ -218,7 +218,7 @@ class MysqlInstantiatableReq {
   async unlock() {
 
     if (!this.isLocked()) {
-      throw new Error('this:unlock() weird state, should not be locked')
+      throw new Error('this:unlock() weird state, should be locked')
     }
 
     this.lockedStatePromise = null;
