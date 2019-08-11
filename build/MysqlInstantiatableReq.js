@@ -13,7 +13,6 @@ class MysqlInstantiatableReq {
       connectionConfig
     } = config || {};
     this.mysqlConnection = null;
-    this.locked = false;
     this.lockedStatePromise = null;
     this.setLogger(logger || {
       log: () => {},
@@ -117,7 +116,7 @@ class MysqlInstantiatableReq {
     await this.awaitLockStatePromises();
 
     if (await this.isConnected()) {
-      this.getLogger().debug('this:connect(), Already connected');
+      this.getLogger().debug('this:connect(), Already connected', this.getThreadId());
       return this.getThreadId();
     }
 
@@ -133,7 +132,6 @@ class MysqlInstantiatableReq {
       await this.lock(new Promise((resolve, reject) => {
         this.getConnection().connect(err => err && reject(err) || resolve(true));
       }));
-      await this.awaitLockStatePromises();
       this.getLogger().debug(`this:connect(), Connected to database, threadId: ${this.getThreadId()}`);
     } catch (err) {
       this.getLogger().debug('this:connect(), trouble connecting threw: ', err);
@@ -143,9 +141,7 @@ class MysqlInstantiatableReq {
   }
 
   async disconnect() {
-    this.getLogger().debug('this:disconnect(), beginawait');
     await this.awaitLockStatePromises();
-    this.getLogger().debug('this:disconnect(), endawait');
 
     if (!(await this.isConnected())) {
       this.getLogger().debug('this:disconnect(), isConnected: false');
@@ -159,7 +155,6 @@ class MysqlInstantiatableReq {
       await this.lock(new Promise((resolve, reject) => {
         this.getConnection().end(err => err && reject(err) || resolve(true));
       }));
-      await this.awaitLockStatePromises();
       this.mysqlConnection = null;
     } catch (err) {
       this.getLogger().debug('this:disconnect(), difficulties disconnecting', err);
@@ -174,7 +169,6 @@ class MysqlInstantiatableReq {
     values,
     after
   }) {
-    let res = null;
     await this.awaitLockStatePromises();
     let isConn = await this.isConnected();
 
@@ -183,13 +177,15 @@ class MysqlInstantiatableReq {
       await this.connect();
     }
 
+    let res = null;
+
     try {
       const connection = this.getConnection();
-      res = await new Promise((resolve, reject) => {
+      res = await this.lock(new Promise((resolve, reject) => {
         const cb = (err, result) => err ? reject(err) : resolve(result);
 
-        if (values) connection.query(sql, values, cb);else connection.query(sql, cb);
-      });
+        connection.query(...(values ? [sql, values, cb] : [sql, cb]));
+      }));
     } catch (err) {
       this.getLogger().debug('this.query() failed', {
         sqlMessage: err.sqlMessage,
@@ -221,20 +217,27 @@ class MysqlInstantiatableReq {
 
   async lock(promise) {
     await this.awaitLockStatePromises();
+
+    if (this.isLocked()) {
+      throw new Error('this:lock() weird state, should not be locked');
+    }
+
     this.lockedStatePromise = promise;
-    this.locked = true;
-    this.getLogger().debug('this:lock(), this.locked:', this.locked);
+    this.getLogger().debug('this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
+    return this.lockedStatePromise;
   }
 
-  unlock() {
+  async unlock() {
+    if (!this.isLocked()) {
+      throw new Error('this:unlock() weird state, should not be locked');
+    }
+
     this.lockedStatePromise = null;
-    this.locked = false;
-    this.getLogger().debug('this:unlock(), this.locked:', this.locked);
+    this.getLogger().debug('this:unlock(), this.lockedStatePromise:', this.lockedStatePromise);
   }
 
   isLocked() {
-    this.getLogger().debug('this:isLocked(), this.locked:', this.locked);
-    return this.locked;
+    return this.lockedStatePromise !== null;
   }
 
   static getDefaultEnvVarNames() {

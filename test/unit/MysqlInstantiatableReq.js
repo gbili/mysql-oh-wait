@@ -255,6 +255,11 @@ describe(`MysqlInstantiatableReq`, function() {
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
       expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
       await req.removeConnection();
     });
 
