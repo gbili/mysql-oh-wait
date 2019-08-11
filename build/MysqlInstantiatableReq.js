@@ -75,7 +75,7 @@ class MysqlInstantiatableReq {
     }
 
     this.mysqlConnection = this.getAdapter().createConnection(config);
-    this.getLogger().debug('this.createConnection(), Connection created');
+    this.getLogger().debug(this.getThreadId(), 'this.createConnection(), Connection created', this.mysqlConnection);
   }
 
   hasConnection() {
@@ -96,7 +96,7 @@ class MysqlInstantiatableReq {
     if (this.hasConnection()) {
       await this.disconnect();
       this.mysqlConnection = null;
-      this.getLogger().debug('this.removeConnection(), Connection removed', this.mysqlConnection);
+      this.getLogger().debug(this.getThreadId(), 'this.removeConnection(), Connection removed', this.mysqlConnection);
       didRemove = true;
     }
 
@@ -116,25 +116,25 @@ class MysqlInstantiatableReq {
     await this.awaitLockStatePromises();
 
     if (await this.isConnected()) {
-      this.getLogger().debug('this:connect(), Already connected', this.getThreadId());
+      this.getLogger().debug(this.getThreadId(), 'this:connect(), Already connected', this.getThreadId());
       return this.getThreadId();
     }
 
     if (!this.hasConnection()) {
-      this.getLogger().debug('this:connect(), No connection');
+      this.getLogger().debug(this.getThreadId(), 'this:connect(), No connection');
       this.createConnection();
     }
 
-    this.getLogger().debug('this:connect(), Connecting...');
+    this.getLogger().debug(this.getThreadId(), 'this:connect(), Connecting...');
 
     try {
-      this.getLogger().debug('this:connect(), locking');
+      this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
       await this.lock(new Promise((resolve, reject) => {
         this.getConnection().connect(err => err && reject(err) || resolve(true));
       }));
-      this.getLogger().debug(`this:connect(), Connected to database, threadId: ${this.getThreadId()}`);
+      this.getLogger().debug(this.getThreadId(), `this:connect(), Connected to database, threadId: ${this.getThreadId()}`);
     } catch (err) {
-      this.getLogger().debug('this:connect(), trouble connecting threw: ', err);
+      this.getLogger().debug(this.getThreadId(), 'this:connect(), trouble connecting threw: ', err);
     }
 
     return this.getThreadId();
@@ -144,24 +144,24 @@ class MysqlInstantiatableReq {
     await this.awaitLockStatePromises();
 
     if (!(await this.isConnected())) {
-      this.getLogger().debug('this:disconnect(), isConnected: false');
+      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: false');
       return;
     }
 
-    this.getLogger().debug('this:disconnect(), isConnected: true', this.getThreadId());
+    this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: true', this.getThreadId());
 
     try {
-      this.getLogger().debug('this:disconnect(), locking');
+      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
       await this.lock(new Promise((resolve, reject) => {
         this.getConnection().end(err => err && reject(err) || resolve(true));
       }));
       this.mysqlConnection = null;
     } catch (err) {
-      this.getLogger().debug('this:disconnect(), difficulties disconnecting', err);
+      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), difficulties disconnecting', err);
     }
 
     let isConn = await this.isConnected();
-    this.getLogger().debug('this:disconnect() end isConnected:', isConn, ' threadId', this.getThreadId());
+    this.getLogger().debug(this.getThreadId(), 'this:disconnect() end isConnected:', isConn, ' threadId', this.getThreadId());
   }
 
   async query({
@@ -173,7 +173,7 @@ class MysqlInstantiatableReq {
     let isConn = await this.isConnected();
 
     if (!isConn) {
-      this.getLogger().debug('this.query() You did not connect manually, attempting automatic connection');
+      this.getLogger().debug(this.getThreadId(), 'this.query() You did not connect manually, attempting automatic connection');
       await this.connect();
     }
 
@@ -184,10 +184,10 @@ class MysqlInstantiatableReq {
       res = await this.lock(new Promise((resolve, reject) => {
         const cb = (err, result) => err ? reject(err) : resolve(result);
 
-        connection.query(...(values ? [sql, values, cb] : [sql, cb]));
+        values ? connection.query(sql, values, cb) : connection.query(sql, cb);
       }));
     } catch (err) {
-      this.getLogger().debug('this.query() failed', {
+      this.getLogger().debug(this.getThreadId(), 'this.query() failed', {
         sqlMessage: err.sqlMessage,
         sql: err.sql,
         sqlState: err.sqlState
@@ -205,13 +205,13 @@ class MysqlInstantiatableReq {
     if (this.isLocked()) {
       try {
         await this.lockedStatePromise;
-        this.getLogger().debug('this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
+        this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
         await this.unlock();
       } catch (err) {
-        this.getLogger().debug('this:awaitLockStatePromises(), error', err);
+        this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), error', err);
       }
     } else {
-      this.getLogger().debug('this:awaitLockStatePromises(), not locked');
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), not locked');
     }
   }
 
@@ -223,7 +223,7 @@ class MysqlInstantiatableReq {
     }
 
     this.lockedStatePromise = promise;
-    this.getLogger().debug('this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
+    this.getLogger().debug(this.getThreadId(), 'this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
     return this.lockedStatePromise;
   }
 
@@ -233,7 +233,7 @@ class MysqlInstantiatableReq {
     }
 
     this.lockedStatePromise = null;
-    this.getLogger().debug('this:unlock(), this.lockedStatePromise:', this.lockedStatePromise);
+    this.getLogger().debug(this.getThreadId(), 'this:unlock(), this.lockedStatePromise:', this.lockedStatePromise);
   }
 
   isLocked() {
