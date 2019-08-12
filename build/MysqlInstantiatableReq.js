@@ -5,6 +5,10 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _ActionResult = _interopRequireDefault(require("./ActionResult"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 class MysqlInstantiatableReq {
   constructor(config) {
     const {
@@ -113,55 +117,67 @@ class MysqlInstantiatableReq {
   }
 
   async connect() {
-    await this.awaitLockStatePromises();
-
-    if (await this.isConnected()) {
-      this.getLogger().debug(this.getThreadId(), 'this:connect(), Already connected', this.getThreadId());
-      return this.getThreadId();
-    }
-
-    if (!this.hasConnection()) {
-      this.getLogger().debug(this.getThreadId(), 'this:connect(), No connection');
-      this.createConnection();
-    }
-
-    this.getLogger().debug(this.getThreadId(), 'this:connect(), Connecting...');
-
-    try {
-      this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
-      await this.lock(new Promise((resolve, reject) => {
-        this.getConnection().connect(err => err && reject(err) || resolve(true));
-      }));
-      this.getLogger().debug(this.getThreadId(), `this:connect(), Connected to database, threadId: ${this.getThreadId()}`);
-    } catch (err) {
-      this.getLogger().debug(this.getThreadId(), 'this:connect(), trouble connecting threw: ', err);
-    }
-
-    return this.getThreadId();
-  }
-
-  async disconnect() {
+    let error = null;
     await this.awaitLockStatePromises();
 
     if (!(await this.isConnected())) {
-      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: false');
-      return;
+      if (!this.hasConnection()) {
+        this.getLogger().debug(this.getThreadId(), 'this:connect(), No connection');
+        this.createConnection();
+      }
+
+      this.getLogger().debug(this.getThreadId(), 'this:connect(), Connecting...');
+
+      try {
+        this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
+        await this.lock(new Promise((resolve, reject) => {
+          this.getConnection().connect(err => err && reject(err) || resolve(true));
+        }));
+        this.getLogger().debug(this.getThreadId(), `this:connect(), Connected to database, threadId: ${this.getThreadId()}`);
+      } catch (err) {
+        this.getLogger().debug(this.getThreadId(), 'this:connect(), trouble connecting threw: ', err);
+        error = err;
+      }
     }
 
-    this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: true', this.getThreadId());
+    return new _ActionResult.default({
+      value: this.getThreadId(),
+      error,
+      info: this.getConnectionInfo()
+    });
+  }
 
-    try {
-      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
-      await this.lock(new Promise((resolve, reject) => {
-        this.getConnection().end(err => err && reject(err) || resolve(true));
-      }));
-      this.mysqlConnection = null;
-    } catch (err) {
-      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), difficulties disconnecting', err);
+  async disconnect() {
+    let error = null;
+    let didDisconnect = false;
+    await this.awaitLockStatePromises();
+
+    if (await this.isConnected()) {
+      this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: true', this.getThreadId());
+
+      try {
+        this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
+        await this.lock(new Promise((resolve, reject) => {
+          this.getConnection().end(err => err && reject(err) || resolve(true));
+        }));
+        this.mysqlConnection = null;
+      } catch (err) {
+        this.getLogger().debug(this.getThreadId(), 'this:disconnect(), difficulties disconnecting', err);
+        error = err;
+      }
+
+      didDisconnect = true;
     }
 
-    let isConn = await this.isConnected();
-    this.getLogger().debug(this.getThreadId(), 'this:disconnect() end isConnected:', isConn, ' threadId', this.getThreadId());
+    if (!error && (await this.isConnected())) {
+      error = new Error('Weird error, still connected after disconnect attempt');
+    }
+
+    return new _ActionResult.default({
+      value: didDisconnect,
+      error,
+      info: this.getConnectionInfo()
+    });
   }
 
   async query({
@@ -170,18 +186,23 @@ class MysqlInstantiatableReq {
     after
   }) {
     await this.awaitLockStatePromises();
-    let isConn = await this.isConnected();
 
-    if (!isConn) {
+    if (!(await this.isConnected())) {
       this.getLogger().debug(this.getThreadId(), 'this.query() You did not connect manually, attempting automatic connection');
-      await this.connect();
+      const connectResult = await this.connect();
+
+      if (connectResult.error !== null) {
+        this.getLogger().debug(this.getThreadId(), 'this.query() Automatic connection attempt failed, cannot continue with query');
+        throw connectResult.error;
+      }
     }
 
-    let res = null;
+    let result = null;
+    let error = null;
 
     try {
       const connection = this.getConnection();
-      res = await this.lock(new Promise((resolve, reject) => {
+      result = await this.lock(new Promise((resolve, reject) => {
         const cb = (err, result) => err ? reject(err) : resolve(result);
 
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
@@ -192,13 +213,26 @@ class MysqlInstantiatableReq {
         sql: err.sql,
         sqlState: err.sqlState
       }, err);
+      error = err;
     }
 
     if (typeof after === 'function') {
-      res = after(res);
+      result = after(result);
     }
 
-    return res;
+    return new _ActionResult.default({
+      value: result,
+      error,
+      info: this.getConnectionInfo()
+    });
+  }
+
+  getConnectionInfo() {
+    return {
+      threadId: this.getThreadId(),
+      connection: this.hasConnection() && this.getConnection() || null,
+      config: this.getConnectionConfig()
+    };
   }
 
   async awaitLockStatePromises() {
@@ -267,5 +301,4 @@ class MysqlInstantiatableReq {
 
 }
 
-var _default = MysqlInstantiatableReq;
-exports.default = _default;
+exports.default = MysqlInstantiatableReq;

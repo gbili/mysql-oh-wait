@@ -2,12 +2,27 @@ import { expect } from 'chai';
 import mysql from 'mysql';
 import logger from 'saylo';
 import MysqlInstantiatableReq from '../../src/MysqlInstantiatableReq';
+import ActionResult from '../../src/ActionResult';
 
 describe(`MysqlInstantiatableReq`, function() {
 
   logger.turnOn('debug');
 
   describe(`MysqlInstantiatableReq.constructor({adapter, logger, connectionConfig})`, function() {
+    it('should be able to get an ActionResult', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlInstantiatableReq({
+        adapter: mysql,
+        connectionConfig: config
+      });
+      const actionResult = await req.connect();
+      expect(actionResult).to.be.an.instanceof(ActionResult);
+      await req.removeConnection();
+    });
+
     it('should be able to connect with adapter and connectionConfig params', async function() {
       const config = {
         multipleStatements: false,
@@ -17,8 +32,42 @@ describe(`MysqlInstantiatableReq`, function() {
         adapter: mysql,
         connectionConfig: config
       });
-      expect(await req.connect()).to.be.a('number');
+      const actionResult = await req.connect();
+      expect(actionResult.value).to.be.a('number');
       await req.removeConnection();
+    });
+
+    it('should make ActionResult have an error property on wrong connection credentials confg', async function() {
+      const config = {
+        multipleStatements: false,
+        database: 'wrongone',
+        host: 'wrongone',
+        user: 'wrongone',
+        password: 'wrongone',
+      };
+      const req = new MysqlInstantiatableReq({
+        adapter: mysql,
+        connectionConfig: config
+      });
+      const actionResult = await req.connect();
+      expect(actionResult.error).to.not.be.equal(null);
+      await req.removeConnection();
+    });
+
+    it('should throw an error property on missing host connection confg construction', async function() {
+      const { user, password } = MysqlInstantiatableReq.extractConfigFromEnv(process.env);
+      const config = {
+        multipleStatements: false,
+        user,
+        password
+      };
+      const shouldThrow = function() {
+        new MysqlInstantiatableReq({
+          adapter: mysql,
+          connectionConfig: config
+        });
+      };
+      expect(shouldThrow).to.throw();
     });
 
     it('should be able to set connectionConfig from constructor param', async function() {
@@ -59,7 +108,8 @@ describe(`MysqlInstantiatableReq`, function() {
       const req = new MysqlInstantiatableReq();
       req.setAdapter(mysql);
       req.setConnectionConfig(config);
-      expect(await req.connect()).to.be.a('number');
+      const actionResult = await req.connect()
+      expect(actionResult.value).to.be.a('number');
       await req.removeConnection();
     });
 
@@ -132,7 +182,8 @@ describe(`MysqlInstantiatableReq`, function() {
         logger,
         connectionConfig: config
       });
-      await req.connect();
+      const actionResult = await req.connect();
+      expect(actionResult.value).to.be.a('number');
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
       await req.removeConnection();
@@ -215,9 +266,11 @@ describe(`MysqlInstantiatableReq`, function() {
         connectionConfig: config
       });
       await req.removeConnection();
-      expect(await req.connect()).to.be.a('number');
-      const lastCallThreadId = req.getThreadId();
-      expect(await req.connect()).to.be.equal(lastCallThreadId);
+      const actionResult = await req.connect();
+      expect(actionResult.value).to.be.a('number');
+      const actionResult2 = await req.connect();
+      expect(actionResult2.value).to.be.a('number');
+      expect(actionResult.value).to.be.equal(actionResult2.value);
       await req.removeConnection();
     });
 
@@ -235,14 +288,15 @@ describe(`MysqlInstantiatableReq`, function() {
         logger,
         connectionConfig: config
       });
-      expect(await req.connect()).to.be.a('number');
+      const actionResult = await req.connect();
+      expect(actionResult.value).to.be.a('number');
       expect(() => req.setConnectionConfig(config2)).to.throw();
       await req.removeConnection();
     });
   });
 
   describe(`req.query()`, async function() {
-    it('return an array on select even if not connected priorly', async function() {
+    it('should return an array on select even if not connected priorly', async function() {
       const config = {
         multipleStatements: false,
         ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
@@ -254,12 +308,31 @@ describe(`MysqlInstantiatableReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
-      expect(await req.query({sql: 'SHOW TABLES'})).to.be.an('array');
+
+      const actionResult = await req.query({sql: 'SHOW TABLES'});
+      expect(actionResult.value).to.be.a('array');
+      expect(actionResult.error).to.be.equal(null);
+      expect(actionResult.info.threadId).to.be.a('number');
+
+      await req.removeConnection();
+    });
+
+    it('should have an error in ActionResult but not throw, on BAD SQL query error', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlInstantiatableReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+
+      const actionResult = await req.query({sql: 'BAD SQL'});
+      expect(actionResult.value).to.be.equal(null);
+      expect(actionResult.error).to.not.be.equal(null);
+      expect(actionResult.info.threadId).to.be.a('number');
+
       await req.removeConnection();
     });
 
@@ -275,7 +348,8 @@ describe(`MysqlInstantiatableReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      expect(await req.query({sql: 'SHOW TABLES', after: res => 'altered'})).to.be.equal('altered');
+      const actionResult = await req.query({sql: 'SHOW TABLES', after: res => 'altered'});
+      expect(actionResult.value).to.be.equal('altered');
       await req.removeConnection();
     });
   });
