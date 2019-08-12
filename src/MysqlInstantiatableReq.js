@@ -114,9 +114,9 @@ export default class MysqlInstantiatableReq {
       try {
         this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
 
-        await this.lock(new Promise((resolve, reject) => {
+        await this.lock((resolve, reject) => {
           this.getConnection().connect(err => ((err && reject(err)) || resolve(true)));
-        }));
+        });
 
         this.getLogger().debug(this.getThreadId(), `this:connect(), Connected to database, threadId: ${ this.getThreadId() }`);
       } catch (err) {
@@ -144,9 +144,9 @@ export default class MysqlInstantiatableReq {
       try {
         this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
 
-        await this.lock(new Promise((resolve, reject) => {
+        await this.lock((resolve, reject) => {
           this.getConnection().end(err => ((err && reject(err)) || resolve(true)));
-        }));
+        });
 
         this.mysqlConnection = null;
       } catch (err) {
@@ -186,10 +186,10 @@ export default class MysqlInstantiatableReq {
     try {
       const connection = this.getConnection();
 
-      result = await this.lock(new Promise((resolve, reject) => {
+      result = await this.lock((resolve, reject) => {
         const cb = (err, result) => (err ? reject(err) : resolve(result));
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
-      }));
+      });
 
     } catch (err) {
       this.getLogger().debug(this.getThreadId(), 'this.query() failed', {sqlMessage: err.sqlMessage, sql: err.sql, sqlState: err.sqlState}, err);
@@ -217,24 +217,28 @@ export default class MysqlInstantiatableReq {
 
   async awaitLockStatePromises() {
 
-    if (this.isLocked()) {
-
-      try {
-        await this.lockedStatePromise;
-        this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
-
-        await this.unlock();
-
-      } catch (err) {
-        this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), error', err);
-      }
-
-    } else {
-        this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), not locked');
+    if (!this.isLocked()) {
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), not locked');
+      return;
     }
+
+    try {
+      await this.lockedStatePromise;
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
+    } catch (err) {
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), error', err);
+    }
+
+    try {
+      await this.unlock();
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking');
+    } catch (err) {
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking error', err);
+    }
+
   }
 
-  async lock(promise) {
+  async lock(promiseParamConstructorParam) {
 
     await this.awaitLockStatePromises();
 
@@ -242,7 +246,7 @@ export default class MysqlInstantiatableReq {
       throw new Error('this:lock() weird state, should not be locked')
     }
 
-    this.lockedStatePromise = promise;
+    this.lockedStatePromise = new Promise(promiseParamConstructorParam);
     this.getLogger().debug(this.getThreadId(), 'this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
 
     return this.lockedStatePromise;
