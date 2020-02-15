@@ -1,20 +1,21 @@
 import { expect } from 'chai';
 import mysql from 'mysql';
 import logger from 'saylo';
-import MysqlInstantiatableReq from '../../src/MysqlInstantiatableReq';
+import MysqlReq, { LoggerInterface } from '../../src/MysqlReq';
 import ActionResult from '../../src/ActionResult';
 
-describe(`MysqlInstantiatableReq`, function() {
+describe(`MysqlReq`, function() {
 
   logger.turnOn('debug');
+  logger.turnOff('debug');
 
-  describe(`MysqlInstantiatableReq.constructor({adapter, logger, connectionConfig})`, function() {
+  describe(`MysqlReq.constructor({adapter, logger, connectionConfig})`, function() {
     it('should be able to get an ActionResult', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
         connectionConfig: config
       });
@@ -26,9 +27,9 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should be able to connect with adapter and connectionConfig params', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
         connectionConfig: config
       });
@@ -45,7 +46,7 @@ describe(`MysqlInstantiatableReq`, function() {
         user: 'wrongone',
         password: 'wrongone',
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
         connectionConfig: config
       });
@@ -55,14 +56,14 @@ describe(`MysqlInstantiatableReq`, function() {
     });
 
     it('should throw an error property on missing host connection confg construction', async function() {
-      const { user, password } = MysqlInstantiatableReq.extractConfigFromEnv(process.env);
+      const { user, password } = MysqlReq.extractConfigFromEnv(process.env);
       const config = {
         multipleStatements: false,
         user,
         password
       };
       const shouldThrow = function() {
-        new MysqlInstantiatableReq({
+        new MysqlReq({
           adapter: mysql,
           connectionConfig: config
         });
@@ -73,11 +74,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should be able to set connectionConfig from constructor param', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       expect(req.getConnectionConfig()).to.be.deep.equal(config);
@@ -85,7 +86,7 @@ describe(`MysqlInstantiatableReq`, function() {
     });
 
     it('should be able to set adapter from constructor param', async function() {
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
       });
       expect(req.getAdapter()).to.be.equal(mysql);
@@ -93,8 +94,8 @@ describe(`MysqlInstantiatableReq`, function() {
     });
 
     it('should be able to set logger from constructor param', async function() {
-      const req = new MysqlInstantiatableReq({
-        logger,
+      const req = new MysqlReq({
+        logger: logger as unknown as LoggerInterface,
       });
       expect(req.getLogger()).to.be.equal(logger);
       await req.removeConnection();
@@ -103,9 +104,9 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should be able to connect without params if setAdapter() and setConnectionConfig() are called before', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq();
+      const req = new MysqlReq();
       req.setAdapter(mysql);
       req.setConnectionConfig(config);
       const actionResult = await req.connect()
@@ -116,9 +117,9 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should not be connected on instantiation', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq();
+      const req = new MysqlReq();
       req.setAdapter(mysql);
       req.setConnectionConfig(config);
       expect(await req.isConnected()).to.be.equal(false);
@@ -126,60 +127,60 @@ describe(`MysqlInstantiatableReq`, function() {
     });
   });
 
-  describe(`MysqlInstantiatableReq.extractConfigFromEnv()`, function() {
+  describe(`MysqlReq.extractConfigFromEnv()`, function() {
     it('should be able to load connection config from env variables and return it', async function() {
-      expect(MysqlInstantiatableReq.extractConfigFromEnv(process.env)).to.be.an('object');
+      expect(MysqlReq.extractConfigFromEnv(process.env)).to.be.an('object');
     });
   });
 
-  describe(`MysqlInstantiatableReq.setConnectionConfig()`, function() {
+  describe(`MysqlReq.setConnectionConfig()`, function() {
     it('should be able to set connection config and return it', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq();
+      const req = new MysqlReq();
       expect(req.setConnectionConfig(config)).to.deep.equal(config);
       await req.removeConnection();
     });
   });
 
-  describe(`MysqlInstantiatableReq.getConnectionConfig()`, function() {
+  describe(`MysqlReq.getConnectionConfig()`, function() {
     it('should return connection config created with setConnectionConfig()', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq();
+      const req = new MysqlReq();
       req.setConnectionConfig(config);
       expect(req.getConnectionConfig()).to.deep.equal(config);
       await req.removeConnection();
     });
   });
 
-  describe(`MysqlInstantiatableReq.removeConnection()`, async function() {
-    it('should make MysqlInstantiatableReq.hasConnection() return false', async function() {
+  describe(`MysqlReq.removeConnection()`, async function() {
+    it('should make MysqlReq.hasConnection() return false', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
     });
 
-    it('should make MysqlInstantiatableReq.hasConnection() return false even if connection was set priorly', async function() {
+    it('should make MysqlReq.hasConnection() return false even if connection was set priorly', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       const actionResult = await req.connect();
@@ -192,11 +193,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should return false if there was no connection', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -207,11 +208,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should return true if there was a connection', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -225,11 +226,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should return true if createConnection() is called before', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.hasConnection() && await req.removeConnection();
@@ -241,11 +242,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should return false if removeConnection() is called before', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -258,11 +259,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should not reconnect if connectionConfig has not changed', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -277,15 +278,15 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should not allow reseting connectionConfig if hasConnection', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
       const config2 = {
         multipleStatements: true,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       const actionResult = await req.connect();
@@ -299,11 +300,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should return an array on select even if not connected priorly', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -312,7 +313,7 @@ describe(`MysqlInstantiatableReq`, function() {
       const actionResult = await req.query({sql: 'SHOW TABLES'});
       expect(actionResult.value).to.be.a('array');
       expect(actionResult.error).to.be.equal(null);
-      expect(actionResult.info.threadId).to.be.a('number');
+      expect(actionResult?.info?.threadId).to.be.a('number');
 
       await req.removeConnection();
     });
@@ -320,18 +321,18 @@ describe(`MysqlInstantiatableReq`, function() {
     it('should have an error in ActionResult but not throw, on BAD SQL query error', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
 
       const actionResult = await req.query({sql: 'BAD SQL'});
       expect(actionResult.value).to.be.equal(null);
       expect(actionResult.error).to.not.be.equal(null);
-      expect(actionResult.info.threadId).to.be.a('number');
+      expect(actionResult?.info?.threadId).to.be.a('number');
 
       await req.removeConnection();
     });
@@ -339,11 +340,11 @@ describe(`MysqlInstantiatableReq`, function() {
     it('return an array on select should be altered by "after" param', async function() {
       const config = {
         multipleStatements: false,
-        ...MysqlInstantiatableReq.extractConfigFromEnv(process.env),
+        ...MysqlReq.extractConfigFromEnv(process.env),
       };
-      const req = new MysqlInstantiatableReq({
+      const req = new MysqlReq({
         adapter: mysql,
-        logger,
+        logger: logger as unknown as LoggerInterface,
         connectionConfig: config
       });
       await req.removeConnection();

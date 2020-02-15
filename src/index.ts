@@ -5,4 +5,4 @@ import RequestorCapability from './models/RequestorCapability';
 import RequestorModel from './models/RequestorModel';
 
 export { MysqlReq, MysqlDump, ActionResult, RequestorCapability, RequestorModel };
-export default MysqlInstantiatableReq;
+export default MysqlReq;

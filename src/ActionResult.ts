@@ -1,10 +1,3 @@
-export default class ActionResult {
-  constructor({ value, error, info }) {
-    this.value = value;
-    this.error = error;
-    if (info) {
-      this.info = info;
-    }
-  }
+export default class ActionResult<T extends any, U extends any> {
+  constructor(public value: T, public error: Error | null, public info?: U) {}
 }
-

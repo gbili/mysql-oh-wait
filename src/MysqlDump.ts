@@ -1,64 +1,91 @@
-let _logger = { log: () => {} };
-let _requestor = null;
-let _readFileSync = null;
-let _existsSync = null;
+import { readFileSync, existsSync } from "fs";
+import { LoggerInterface } from "./MysqlReq";
+import { MysqlReq } from ".";
+import { ConnectionConfig } from "mysql";
+
+export type InjectProps = {
+  requestor?: MysqlReq;
+  logger?: LoggerInterface
+  readFileSync?: typeof readFileSync;
+  existsSync?: typeof existsSync;
+}
+
+export interface ExecuteSqlFileOptProps { 
+  filePath: string;
+  disconnectOnFinish?: boolean;
+  connectionConfig?: ConnectionConfig
+}
 
 class MysqlDump {
 
-  static inject({ requestor, logger, readFileSync, existsSync }) {
-    logger && MysqlDump.setLogger(logger);
-    requestor && MysqlDump.setRequestor(requestor);
-    _readFileSync = readFileSync || null;
-    _existsSync = existsSync || null;
+  private logger: LoggerInterface | null = { log: () => undefined, debug: () => undefined };
+  private requestor: MysqlReq | null = null;
+  private readFileSync: typeof readFileSync | null = null;
+  private existsSync: typeof existsSync | null = null;
+
+  inject({ requestor, logger, readFileSync, existsSync }: InjectProps) {
+    logger && this.setLogger(logger);
+    requestor && this.setRequestor(requestor);
+    this.readFileSync = readFileSync || null;
+    this.existsSync = existsSync || null;
   }
 
-  static setRequestor(req) {
-    _requestor = req;
+  setRequestor(req: MysqlReq): void {
+    this.requestor = req;
   }
 
-  static getRequestor() {
-    if (!_requestor) {
+  getRequestor(): MysqlReq | never {
+    if (!this.requestor) {
       throw new Error('Must set Requestor first');
     }
-    return _requestor;
+    return this.requestor;
   }
 
-  static setLogger(logger) {
-    _logger = logger;
+  setLogger(logger: LoggerInterface) {
+    this.logger = logger;
   }
 
-  static getLogger() {
-    if (null === _logger) {
+  getLogger(): LoggerInterface | never {
+    if (null === this.logger) {
       throw new Error('You must set the logger first');
     }
-    return _logger;
+    return this.logger;
   }
 
 
-  static async executeSqlFileOnExistingConnection({ filePath, disconnectOnFinish }) {
-    if (!_existsSync(filePath)) {
+  async executeSqlFileOnExistingConnection({ filePath, disconnectOnFinish }: ExecuteSqlFileOptProps ): Promise<void> {
+    if (!this.existsSync || !this.readFileSync ) {
+      throw new Error('Need to pass existsSync, and readFileSync to MysqlDum.inject');
+    }
+    if (!this.existsSync(filePath)) {
       throw new Error('File path does not exists ');
     }
-    _logger.log('executeSchemaOntoExistingConnection');
-    await MysqlDump.getRequestor().query({
-      sql: _readFileSync(filePath, 'utf-8'),
+    this.getLogger().log('executeSchemaOntoExistingConnection');
+    await this.getRequestor().query({
+      sql: this.readFileSync(filePath, 'utf-8'),
     });
 
     if (disconnectOnFinish) {
-      await MysqlDump.getRequestor().disconnect();
+      await this.getRequestor().disconnect();
     }
   }
 
-  static async executeSqlFile({ filePath, connectionConfig, disconnectOnFinish }) {
-    _logger.log(`MysqlDump:executeSqlFile(${filePath})`);
+  async executeSqlFile({ filePath, connectionConfig, disconnectOnFinish }: ExecuteSqlFileOptProps): Promise<void>  {
+    if (!this.logger) {
+      throw new Error('Must set logger before calling MysqlDump.executeSqlFile');
+    }
+
+    this.logger.log(`MysqlDump:executeSqlFile(${filePath})`);
 
     if (!connectionConfig) {
-      connectionConfig = {};
+      connectionConfig = process.env
+        ? MysqlReq.extractConfigFromEnv(process.env)
+        : {};
     }
 
     let { multipleStatements, ...connectionConfigWithoutMS } = connectionConfig;
 
-    MysqlDump.getRequestor().setConnectionConfig({
+    this.getRequestor().setConnectionConfig({
       multipleStatements: true,
       ...connectionConfigWithoutMS
     });
@@ -67,7 +94,7 @@ class MysqlDump {
       disconnectOnFinish = true;
     }
 
-    await MysqlDump.executeSqlFileOnExistingConnection({ filePath, disconnectOnFinish });
+    await this.executeSqlFileOnExistingConnection({ filePath, disconnectOnFinish });
   }
 }
 

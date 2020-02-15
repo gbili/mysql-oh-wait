@@ -1,18 +1,112 @@
 import ActionResult from './ActionResult';
+import { ConnectionConfig, Connection, MysqlError, QueryOptions, queryCallback } from 'mysql';
 
-export default class MysqlInstantiatableReq {
+export interface ReqQueryOptions extends QueryOptions {
+  after?: (p: any) => any;
+}
 
-  constructor(config) {
+export type ExecutorParam = <S extends (value?: any) => any, T extends (reason?: any) => any>(resolve: S, reject: T) => void
+
+export type RequiredConfigProps = {
+  host: string;
+  user: string;
+  password: string;
+  database: string;
+}
+
+export type UserProvidedEnvVarNames = RequiredConfigProps;
+
+export type ConfigPropsOptional = {
+  host?: string;
+  user?: string;
+  password?: string;
+  database?: string;
+}
+
+export type RequestorEnvVarNames = {
+  host: 'DB_HOST';
+  user: 'DB_USER';
+  password: 'DB_PASSWORD';
+  database: 'DB_NAME';
+}
+
+export type ConnectionConfigOptions = {
+  host: string | null;
+  user: string | null;
+  password: string | null;
+  database: string | null;
+};
+
+export type ConnectionInfo = {
+  threadId: number | null;
+  connection: Connection | null;
+  config: ConnectionConfig;
+}
+
+export declare type LoggerInterface = {
+  debug: (...params: any[]) => void;
+  log: (...params: any[]) => void;
+}
+
+export declare interface MysqlReqConstructor {
+  new (config: ConnectionConfigOptions): MysqlReq; 
+  getDefaultEnvVarNames: () => RequestorEnvVarNames
+  extractConfigFromEnv: (env: Object, envVarNames: RequestorEnvVarNames) => ConnectionConfigOptions; 
+  isMissingConfigProps: (config: ConnectionConfigOptions) => boolean;
+}
+
+export declare interface AdapterInterface {
+  createConnection: (config: ConnectionConfig) => Connection;
+}
+
+export type MysqlReqConfig = {
+  adapter?: AdapterInterface,
+  logger?: LoggerInterface,
+  connectionConfig?: ConnectionConfig
+};
+
+export type MysqlReqInjectProps = {
+  adapter?: AdapterInterface,
+  logger?: LoggerInterface,
+  env?: any 
+  envVarNames?: UserProvidedEnvVarNames 
+};
+
+export default class MysqlReq {
+  public logger: LoggerInterface;
+  public adapter: AdapterInterface | null;
+  public connectionConfig: ConnectionConfig;
+  public mysqlConnection: Connection | null;
+  public lockedStatePromise: Promise<any> | null;
+
+  constructor(config?: MysqlReqConfig) {
     const { adapter, logger, connectionConfig } = config || {};
     this.mysqlConnection = null;
     this.lockedStatePromise = null;
+    this.connectionConfig = {};
+    this.adapter = null;
+    this.logger = { log: () => undefined, debug: () => undefined, };
 
-    this.setLogger(logger || { log: () => {}, debug: () => {}, });
-    this.setAdapter(adapter || null);
+    logger && this.setLogger(logger);
+    adapter && this.setAdapter(adapter);
     connectionConfig && this.setConnectionConfig(connectionConfig);
   }
 
-  setAdapter(mysqlAdapter) {
+  inject({ adapter, logger, env, envVarNames }: MysqlReqInjectProps) {
+    adapter && this.setAdapter(adapter);
+    logger && this.setLogger(logger);
+    let config;
+    if (envVarNames) {
+      config = env && MysqlReq.extractConfigFromEnv(env, envVarNames);
+    } else {
+      config = env && MysqlReq.extractConfigFromEnv(env);
+    }
+    if (config) {
+      this.setConnectionConfig(config);
+    }
+  }
+
+  setAdapter(mysqlAdapter: AdapterInterface) {
     this.adapter = mysqlAdapter;
   }
 
@@ -23,7 +117,7 @@ export default class MysqlInstantiatableReq {
     return this.adapter;
   }
 
-  setLogger(logger) {
+  setLogger(logger: LoggerInterface): void {
     this.logger = logger;
   }
 
@@ -34,12 +128,13 @@ export default class MysqlInstantiatableReq {
     return this.logger;
   }
 
-  setConnectionConfig(config) {
+  setConnectionConfig(config: ConnectionConfig): ConnectionConfig | never  {
     if (this.hasConnection()) {
       throw new Error('Cannot change connection config while there is a connection, call an awating removeConnection() first.');
     }
 
-    if (MysqlInstantiatableReq.isMissingConfigProps(config)) {
+    if (MysqlReq.isMissingConfigProps(config)) {
+      console.log(config);
       throw new Error('Missing database connection config props');
     }
 
@@ -48,36 +143,36 @@ export default class MysqlInstantiatableReq {
     return this.connectionConfig;
   }
 
-  getConnectionConfig() {
+  getConnectionConfig(): ConnectionConfig {
     return this.connectionConfig;
   }
 
-  createConnection() {
+  createConnection(): void | never {
     if (null !== this.mysqlConnection) {
       throw new Error('Cannot create another connection');
     }
     const config = this.getConnectionConfig();
-    if (MysqlInstantiatableReq.isMissingConfigProps(config)) {
+    if (MysqlReq.isMissingConfigProps(config)) {
       throw new Error('Must set full connection config before attempting to connect');
     }
     this.mysqlConnection = this.getAdapter().createConnection(config);
     this.getLogger().debug(this.getThreadId(), 'this.createConnection(), Connection created', this.mysqlConnection);
   }
 
-  hasConnection() {
+  hasConnection(): boolean {
     return this.mysqlConnection !== null;
   }
 
-  getConnection() {
-    if (!this.hasConnection()) {
+  getConnection(): Connection | never {
+    if (this.mysqlConnection === null) {
       throw new Error('You must create a connection first');
     }
     return this.mysqlConnection;
   }
 
-  async removeConnection() {
+  async removeConnection(): Promise<boolean> {
     let didRemove = false;
-    if (this.hasConnection()) {
+    if (this.mysqlConnection) {
       await this.disconnect();
       this.mysqlConnection = null;
       this.getLogger().debug(this.getThreadId(), 'this.removeConnection(), Connection removed', this.mysqlConnection);
@@ -86,21 +181,17 @@ export default class MysqlInstantiatableReq {
     return didRemove;
   }
 
-  getThreadId() {
+  getThreadId(): number | null {
     return (this.hasConnection() && this.getConnection().threadId) || null;
   }
 
-  async isConnected() {
-
+  async isConnected(): Promise<boolean> {
     await this.awaitLockStatePromises();
-
-    return this.hasConnection() && Number.isInteger(this.getThreadId());
+    return this.hasConnection() && Number.isInteger(this.getThreadId() as any);
   }
 
   async connect() {
-
-    let error = null;
-
+    let error: MysqlError | null = null;
     await this.awaitLockStatePromises();
 
     if (!(await this.isConnected())) {
@@ -125,11 +216,11 @@ export default class MysqlInstantiatableReq {
       }
     }
 
-    return new ActionResult({
-      value: this.getThreadId(),
+    return new ActionResult(
+      this.getThreadId(),
       error,
-      info: this.getConnectionInfo(),
-    });
+      this.getConnectionInfo(),
+    );
   }
 
   async disconnect() {
@@ -160,14 +251,14 @@ export default class MysqlInstantiatableReq {
       error = new Error('Weird error, still connected after disconnect attempt');
     }
 
-    return new ActionResult({
-      value: didDisconnect,
+    return new ActionResult(
+      didDisconnect,
       error,
-      info: this.getConnectionInfo(),
-    });
+      this.getConnectionInfo(),
+    );
   }
 
-  async query({ sql, values, after }) {
+  async query({ sql, values, after }: ReqQueryOptions) {
 
     await this.awaitLockStatePromises();
 
@@ -187,7 +278,7 @@ export default class MysqlInstantiatableReq {
       const connection = this.getConnection();
 
       result = await this.lock((resolve, reject) => {
-        const cb = (err, result) => (err ? reject(err) : resolve(result));
+        const cb: queryCallback = (err, result) => (err ? reject(err) : resolve(result));
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
       });
 
@@ -200,14 +291,14 @@ export default class MysqlInstantiatableReq {
       result = after(result);
     }
 
-    return new ActionResult({
-      value: result,
+    return new ActionResult(
+      result,
       error,
-      info: this.getConnectionInfo(),
-    });
+      this.getConnectionInfo(),
+    );
   }
 
-  getConnectionInfo() {
+  getConnectionInfo(): ConnectionInfo {
     return {
       threadId: this.getThreadId(),
       connection: (this.hasConnection() && this.getConnection()) || null,
@@ -230,7 +321,7 @@ export default class MysqlInstantiatableReq {
     }
 
     try {
-      await this.unlock();
+      this.unlock();
       this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking');
     } catch (err) {
       this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking error', err);
@@ -238,7 +329,7 @@ export default class MysqlInstantiatableReq {
 
   }
 
-  async lock(promiseParamConstructorParam) {
+  async lock(executor: ExecutorParam) {
 
     await this.awaitLockStatePromises();
 
@@ -246,13 +337,13 @@ export default class MysqlInstantiatableReq {
       throw new Error('this:lock() weird state, should not be locked')
     }
 
-    this.lockedStatePromise = new Promise(promiseParamConstructorParam);
+    this.lockedStatePromise = new Promise(executor);
     this.getLogger().debug(this.getThreadId(), 'this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
 
     return this.lockedStatePromise;
   }
 
-  async unlock() {
+  unlock() {
 
     if (!this.isLocked()) {
       throw new Error('this:unlock() weird state, should be locked')
@@ -266,7 +357,7 @@ export default class MysqlInstantiatableReq {
     return this.lockedStatePromise !== null;
   }
 
-  static getDefaultEnvVarNames() {
+  static getDefaultEnvVarNames(): RequestorEnvVarNames {
     return {
       host: 'DB_HOST',
       user: 'DB_USER',
@@ -275,8 +366,8 @@ export default class MysqlInstantiatableReq {
     };
   }
 
-  static extractConfigFromEnv(env, envVarNames) {
-    envVarNames = envVarNames || MysqlInstantiatableReq.getDefaultEnvVarNames();
+  static extractConfigFromEnv(env: any, envVarNames?: UserProvidedEnvVarNames): ConfigPropsOptional {
+    envVarNames = envVarNames || MysqlReq.getDefaultEnvVarNames();
     return {
       host: env[envVarNames.host] || null,
       user: env[envVarNames.user] || null,
@@ -285,7 +376,7 @@ export default class MysqlInstantiatableReq {
     }
   }
 
-  static isMissingConfigProps(config) {
+  static isMissingConfigProps(config: ConfigPropsOptional): boolean {
     const requiredProps = ['host', 'user', 'password', 'database'];
     const missingProps = requiredProps.filter(prop => !config.hasOwnProperty(prop));
     return missingProps.length > 0;

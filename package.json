@@ -1,17 +1,19 @@
 {
   "name": "mysql-oh-wait",
-  "version": "v0.7.0",
+  "version": "v0.8.0",
   "description": "mysql wrapper with async / await returning results, single connection waranty per process",
-  "main": "build/index.js",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
   "scripts": {
     "coverage:generate": "nyc npm run test",
-    "coverage:check": "nyc check-coverage --lines 90 --branches 76 --statements 90 --functions 90",
+    "coverage:check": "nyc check-coverage --statements 75 --branches 60 --functions 83 --lines 87",
     "coverage:report": "nyc report --reporter=text-lcov > coverage.lcov",
     "coverage:report:upload": "CODECOV_TOKEN=\"$(grep \"CODECOV_TOKEN=\" .env | cut -d'=' -f2)\" codecov",
     "coverage": "npm run coverage:generate && npm run coverage:check && npm run coverage:report && npm run coverage:report:upload",
-    "test": "mocha --recursive",
-    "develop": "nodemon ./build/index.js",
-    "serve": "NODE_ENV=production node ./build/index.js"
+    "test": "mocha --recursive ./build/test",
+    "develop": "nodemon ./build/src/index.js",
+    "prepublish": "tsc",
+    "serve": "NODE_ENV=production node ./build/src/index.js"
   },
   "config": {
     "ghooks": {
@@ -39,18 +41,23 @@
   },
   "homepage": "https://github.com/gbili/mysql-oh-wait#readme",
   "devDependencies": {
+    "@types/dotenv": "8.2.0",
     "chai": "4.2.0",
     "codecov": "^3.5.0",
     "dotenv": "^8.0.0",
     "ghooks": "^2.0.4",
-    "marked": "^0.6.3",
+    "marked": "0.8.0",
     "mocha": "6.1.4",
     "nodemon": "1.19.1",
     "nyc": "^14.1.1"
   },
   "dependencies": {
+    "@types/chai": "4.2.9",
+    "@types/mocha": "7.0.1",
+    "@types/mysql": "2.15.8",
+    "@types/node": "13.7.1",
     "mysql": "^2.17.1",
-    "saylo": "^0.2.1"
+    "saylo": "^0.3.0"
   },
   "directories": {
     "test": "test"
