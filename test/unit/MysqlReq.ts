@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import mysql from 'mysql';
-import logger from 'saylo';
-import MysqlReq, { LoggerInterface } from '../../src/MysqlReq';
+import { logger } from 'saylo';
+import MysqlReq from '../../src/MysqlReq';
 import ActionResult from '../../src/ActionResult';
 
 describe(`MysqlReq`, function() {
@@ -78,7 +78,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       expect(req.getConnectionConfig()).to.be.deep.equal(config);
@@ -95,7 +95,7 @@ describe(`MysqlReq`, function() {
 
     it('should be able to set logger from constructor param', async function() {
       const req = new MysqlReq({
-        logger: logger as unknown as LoggerInterface,
+        logger,
       });
       expect(req.getLogger()).to.be.equal(logger);
       await req.removeConnection();
@@ -166,7 +166,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -180,7 +180,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       const actionResult = await req.connect();
@@ -197,7 +197,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -212,7 +212,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -230,7 +230,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.hasConnection() && await req.removeConnection();
@@ -246,7 +246,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -263,7 +263,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -286,7 +286,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       const actionResult = await req.connect();
@@ -304,7 +304,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();
@@ -325,7 +325,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
 
@@ -344,7 +344,7 @@ describe(`MysqlReq`, function() {
       };
       const req = new MysqlReq({
         adapter: mysql,
-        logger: logger as unknown as LoggerInterface,
+        logger: logger,
         connectionConfig: config
       });
       await req.removeConnection();

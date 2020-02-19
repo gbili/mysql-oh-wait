@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { readFileSync, existsSync } from 'fs';
 import mysql from 'mysql';
-import logger from 'saylo';
+import { logger } from 'saylo';
 
-import MysqlReq, { LoggerInterface } from '../src/MysqlReq';
+import MysqlReq from '../src/MysqlReq';
 import MysqlDump from '../src/MysqlDumpStatic';
 import { expect } from 'chai';
 
@@ -12,8 +12,8 @@ const injectDependencies = function () {
   logger.turnOff('debug');
   logger.log('injectingDependencies');
   const mysqlReq = new MysqlReq();
-  mysqlReq.inject({ adapter: mysql, logger: logger as unknown as LoggerInterface, env: process.env });
-  MysqlDump.inject({ requestor: mysqlReq, logger: logger as unknown as LoggerInterface, readFileSync, existsSync });
+  mysqlReq.inject({ adapter: mysql, logger, env: process.env });
+  MysqlDump.inject({ requestor: mysqlReq, logger, readFileSync, existsSync });
 }
 
 let bootstrapped = false;
