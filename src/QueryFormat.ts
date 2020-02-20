@@ -184,7 +184,7 @@ export default class QueryFormat {
         // f) object stringable array array
       ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
     } else {// named ref not present in values (dont replace anything)
-      return ref;
+      throw new Error('Provided named :ref without corresponding value');
     }
 
     // for ts overload recognition
