@@ -12,7 +12,6 @@
     "coverage": "npm run coverage:generate && npm run coverage:check && npm run coverage:report && npm run coverage:report:upload",
     "test": "mocha --recursive ./build/test",
     "develop": "nodemon ./build/src/index.js",
-    "prepublish": "tsc",
     "serve": "NODE_ENV=production node ./build/src/index.js"
   },
   "config": {
@@ -42,6 +41,7 @@
   "homepage": "https://github.com/gbili/mysql-oh-wait#readme",
   "devDependencies": {
     "@types/dotenv": "8.2.0",
+    "@types/uuid": "3.4.7",
     "chai": "4.2.0",
     "codecov": "^3.5.0",
     "dotenv": "^8.0.0",
@@ -56,8 +56,9 @@
     "@types/mocha": "7.0.1",
     "@types/mysql": "2.15.8",
     "@types/node": "13.7.1",
-    "mysql": "^2.17.1",
-    "saylo": "0.5.0"
+    "mysql": "2.18.1",
+    "saylo": "0.5.0",
+    "uuid": "3.4.0"
   },
   "directories": {
     "test": "test"

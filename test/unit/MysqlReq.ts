@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import mysql from 'mysql';
 import { logger } from 'saylo';
+import uuidv4 from 'uuid/v4';
 import MysqlReq from '../../src/MysqlReq';
 import ActionResult from '../../src/ActionResult';
 
@@ -353,5 +354,135 @@ describe(`MysqlReq`, function() {
       expect(actionResult.value).to.be.equal('altered');
       await req.removeConnection();
     });
+
+    it('should be able to insert with special query format', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+      await req.removeConnection();
+      expect(req.hasConnection()).to.be.equal(false);
+      const uniqueID = uuidv4().substring(0, 14);
+      const actionResult = await req.query({
+        sql: 'INSERT INTO BookRepeated (title, author) VALUES :books',
+        values: {
+          books: [
+            ['big lebowsky', uniqueID + '1'],
+            ['smal blosky', uniqueID + '2'],
+            ['random lebos', `'${uniqueID}'); SELECT * FROM Tag WHERE 1=1;`],
+          ],
+        },
+      });
+      console.log(actionResult.error);
+      expect(actionResult.value.insertId).to.be.a('number');
+      await req.removeConnection();
+    });
+
+    it('should be able to insert with special :? query format', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+      await req.removeConnection();
+      expect(req.hasConnection()).to.be.equal(false);
+      const uniqueID = uuidv4().substring(0, 14);
+      const actionResult = await req.query({
+        sql: 'INSERT INTO BookRepeated (title, author) VALUES :?',
+        values: [
+          ['big lebowsky', uniqueID + '1'],
+          ['smal blosky', uniqueID + '2'],
+          ['random lebos', `'${uniqueID}'); SELECT * FROM Tag WHERE 1=1;`],
+        ],
+      });
+      console.log(actionResult.error);
+      expect(actionResult.value.insertId).to.be.a('number');
+      await req.removeConnection();
+    });
+
+    it('should be able to select with special query format non nested array no parents', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+      await req.removeConnection();
+      expect(req.hasConnection()).to.be.equal(false);
+      const actionResult = await req.query({
+        sql: 'SELECT title FROM BookRepeated WHERE title IN :books',
+        values: {
+          books: ['big lebo;wsky', 'random lebos', `a'really'); SELECT * FROM Tag WHERE 1=1;` ],
+        },
+      });
+      console.log(actionResult.error);
+      expect(actionResult.value).to.be.an('array');
+      await req.removeConnection();
+    });
+
+    it('should be able to select with sequential ? query format and 0 depth levels', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+      await req.removeConnection();
+      expect(req.hasConnection()).to.be.equal(false);
+      const actionResult = await req.query({
+        sql: 'SELECT title FROM BookRepeated WHERE title IN (:?, :?) OR title = :?',
+        values: [
+          'aspeci;al',
+          'random lebos',
+          `a'really'); SELECT * FROM Tag WHERE 1=1;`
+        ],
+      });
+      console.log(actionResult.error);
+      expect(actionResult.value).to.be.an('array');
+      await req.removeConnection();
+    });
+
+    it('should be able to select with sequential ? query format and mixed depth 1 and 0', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger,
+        connectionConfig: config
+      });
+      await req.removeConnection();
+      expect(req.hasConnection()).to.be.equal(false);
+      const actionResult = await req.query({
+        sql: 'SELECT title FROM BookRepeated WHERE title IN :? OR title = :?',
+        values: [
+          [
+            'random lebos',
+            'asuperreallyspec',
+          ],
+          `a'really'); SELECT * FROM Tag WHERE 1=1;`,
+        ],
+      });
+      console.log(actionResult.error);
+      expect(actionResult.value).to.be.an('array');
+      await req.removeConnection();
+    });
+
   });
 });

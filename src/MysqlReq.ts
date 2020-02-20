@@ -1,5 +1,6 @@
 import ActionResult from './ActionResult';
 import { ConnectionConfig, Connection, MysqlError, QueryOptions, queryCallback } from 'mysql';
+import QueryFormat, { Values } from './QueryFormat';
 
 export interface ReqQueryOptions extends QueryOptions {
   after?: (p: any) => any;
@@ -156,7 +157,26 @@ export default class MysqlReq {
       throw new Error('Must set full connection config before attempting to connect');
     }
     this.mysqlConnection = this.getAdapter().createConnection(config);
+    this.attachQueryFormat();
     this.getLogger().debug(this.getThreadId(), 'this.createConnection(), Connection created', this.mysqlConnection);
+  }
+
+  attachQueryFormat(queryFormat?: { queryFormat: (query: string, values: Values) => string; }) {
+    if (!this.hasConnection()) {
+      throw new Error('Must createConnection first');
+    }
+
+    if (!this.mysqlConnection) {
+      throw new Error('Connection must be provided for QueryFormat to be attached');
+    }
+
+    if (!queryFormat) {
+      queryFormat = new QueryFormat(this.mysqlConnection);
+    }
+
+    this.mysqlConnection.config.queryFormat = function(query, values) {
+      return (queryFormat as QueryFormat).queryFormat(query, values);
+    };
   }
 
   hasConnection(): boolean {

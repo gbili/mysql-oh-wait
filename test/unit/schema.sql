@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS `Book` (
   UNIQUE(`title`, `author`)
 );
 
+DROP TABLE IF EXISTS `BookRepeated`;
+CREATE TABLE IF NOT EXISTS `BookRepeated` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(200) NOT NULL,
+  `author` varchar(200) NOT NULL,
+  PRIMARY KEY (`ID`)
+);
+
 DROP TABLE IF EXISTS `User`;
 CREATE TABLE IF NOT EXISTS `User` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
