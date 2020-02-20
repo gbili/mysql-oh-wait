@@ -184,7 +184,12 @@ export default class QueryFormat {
         // f) object stringable array array
       ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
     } else {// named ref not present in values (dont replace anything)
-      throw new Error(`Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}`);
+      throw new Error(
+        `Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}
+         values: ${Object.values(this.values).join(', ')}
+         hasOwnProperty : ${(this.values.hasOwnProperty(key) ? 'yes': 'no')}
+         Note: It may be a Promise, make sure all values are Stringable type and not some Promise lying around`
+      );
     }
 
     // for ts overload recognition
