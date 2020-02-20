@@ -338,6 +338,25 @@ describe(`MysqlReq`, function() {
       await req.removeConnection();
     });
 
+    it('should not execute after method, on BAD SQL query error', async function() {
+      const config = {
+        multipleStatements: false,
+        ...MysqlReq.extractConfigFromEnv(process.env),
+      };
+      const req = new MysqlReq({
+        adapter: mysql,
+        logger: logger,
+        connectionConfig: config
+      });
+
+      const actionResult = await req.query({sql: 'BAD SQL', after: (res) => 'resultAltered'});
+      expect(actionResult.value).to.not.be.equal('resultAltered');
+      expect(actionResult.error).to.not.be.equal(null);
+      expect(actionResult?.info?.threadId).to.be.a('number');
+
+      await req.removeConnection();
+    });
+
     it('return an array on select should be altered by "after" param', async function() {
       const config = {
         multipleStatements: false,

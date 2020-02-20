@@ -292,7 +292,7 @@ export default class MysqlReq {
     }
 
     let result = null;
-    let error = null;
+    let error: MysqlError | null = null;
 
     try {
       const connection = this.getConnection();
@@ -307,7 +307,7 @@ export default class MysqlReq {
       error = err;
     }
 
-    if (typeof after === 'function') {
+    if (null === error && typeof after === 'function') {
       result = after(result);
     }
 
