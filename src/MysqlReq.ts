@@ -79,11 +79,13 @@ export default class MysqlReq {
   public connectionConfig: ConnectionConfig;
   public mysqlConnection: Connection | null;
   public lockedStatePromise: Promise<any> | null;
+  public lockedStateId: string | null;
 
   constructor(config?: MysqlReqConfig) {
     const { adapter, logger, connectionConfig } = config || {};
     this.mysqlConnection = null;
     this.lockedStatePromise = null;
+    this.lockedStateId = null;
     this.connectionConfig = {};
     this.adapter = null;
     this.logger = { log: () => undefined, debug: () => undefined, };
@@ -225,7 +227,7 @@ export default class MysqlReq {
       try {
         this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
 
-        await this.lock((resolve, reject) => {
+        await this.lock('::connect()', (resolve, reject) => {
           this.getConnection().connect(err => ((err && reject(err)) || resolve(true)));
         });
 
@@ -255,7 +257,7 @@ export default class MysqlReq {
       try {
         this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
 
-        await this.lock((resolve, reject) => {
+        await this.lock('::disconnect()', (resolve, reject) => {
           this.getConnection().end(err => ((err && reject(err)) || resolve(true)));
         });
 
@@ -297,13 +299,13 @@ export default class MysqlReq {
     try {
       const connection = this.getConnection();
 
-      result = await this.lock((resolve, reject) => {
+      result = await this.lock('::query():' + sql, (resolve, reject) => {
         const cb: queryCallback = (err, result) => (err ? reject(err) : resolve(result));
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
       });
 
     } catch (err) {
-      this.getLogger().debug(this.getThreadId(), 'this.query() failed', {sqlMessage: err.sqlMessage, sql: err.sql, sqlState: err.sqlState}, err);
+      this.getLogger().debug(this.getThreadId(), 'this.query() failed', err);
       error = err;
     }
 
@@ -334,6 +336,7 @@ export default class MysqlReq {
     }
 
     try {
+      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), start for: ', this.lockedStateId);
       await this.lockedStatePromise;
       this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
     } catch (err) {
@@ -341,15 +344,15 @@ export default class MysqlReq {
     }
 
     try {
-      this.unlock();
       this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking');
+      this.unlock();
     } catch (err) {
       this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking error', err);
     }
 
   }
 
-  async lock(executor: ExecutorParam) {
+  async lock(identifier: string, executor: ExecutorParam) {
 
     await this.awaitLockStatePromises();
 
@@ -357,6 +360,8 @@ export default class MysqlReq {
       throw new Error('this:lock() weird state, should not be locked')
     }
 
+    this.lockedStateId = identifier;
+    this.getLogger().debug(this.getThreadId(), 'this:lock(), creating lockedStatePromise for:', this.lockedStateId);
     this.lockedStatePromise = new Promise(executor);
     this.getLogger().debug(this.getThreadId(), 'this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
 
@@ -369,12 +374,19 @@ export default class MysqlReq {
       throw new Error('this:unlock() weird state, should be locked')
     }
 
+    this.getLogger().debug(this.getThreadId(), 'this:unlock(), for:', this.lockedStateId);
+    this.lockedStateId = null;
     this.lockedStatePromise = null;
     this.getLogger().debug(this.getThreadId(), 'this:unlock(), this.lockedStatePromise:', this.lockedStatePromise);
   }
 
   isLocked() {
-    return this.lockedStatePromise !== null;
+    if (this.lockedStatePromise !== null) {
+      this.getLogger().debug(this.getThreadId(), 'this:isLocked(), with :', this.lockedStateId);
+      return true;
+    } else {
+      return false;
+    }
   }
 
   static getDefaultEnvVarNames(): RequestorEnvVarNames {
