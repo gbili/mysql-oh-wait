@@ -208,13 +208,16 @@ export default class MysqlReq {
   }
 
   async isConnected(): Promise<boolean> {
-    await this.awaitLockStatePromises();
+    if (!this.hasConnection()) {
+      return false;
+    } else if (null === this.getThreadId()) {
+      await this.awaitLockStatePromises(`isConnected()`);
+    }
     return this.hasConnection() && Number.isInteger(this.getThreadId() as any);
   }
 
   async connect() {
     let error: MysqlError | null = null;
-    await this.awaitLockStatePromises();
 
     if (!(await this.isConnected())) {
       if (!this.hasConnection()) {
@@ -227,7 +230,7 @@ export default class MysqlReq {
       try {
         this.getLogger().debug(this.getThreadId(), 'this:connect(), locking');
 
-        await this.lock('::connect()', (resolve, reject) => {
+        await this.lockUnlock('::connect()', (resolve, reject) => {
           this.getConnection().connect(err => ((err && reject(err)) || resolve(true)));
         });
 
@@ -250,14 +253,12 @@ export default class MysqlReq {
     let error = null;
     let didDisconnect = false;
 
-    await this.awaitLockStatePromises();
-
     if (await this.isConnected()) {
       this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: true', this.getThreadId());
       try {
         this.getLogger().debug(this.getThreadId(), 'this:disconnect(), locking');
 
-        await this.lock('::disconnect()', (resolve, reject) => {
+        await this.lockUnlock('::disconnect()', (resolve, reject) => {
           this.getConnection().end(err => ((err && reject(err)) || resolve(true)));
         });
 
@@ -282,8 +283,6 @@ export default class MysqlReq {
 
   async query({ sql, values, after }: ReqQueryOptions) {
 
-    await this.awaitLockStatePromises();
-
     if (!(await this.isConnected())) {
       this.getLogger().debug(this.getThreadId(), 'this.query() You did not connect manually, attempting automatic connection');
       const connectResult = await this.connect();
@@ -299,7 +298,7 @@ export default class MysqlReq {
     try {
       const connection = this.getConnection();
 
-      result = await this.lock('::query():' + sql, (resolve, reject) => {
+      result = await this.waitForLocks('::query():' + sql, (resolve, reject) => {
         const cb: queryCallback = (err, result) => (err ? reject(err) : resolve(result));
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
       });
@@ -328,52 +327,67 @@ export default class MysqlReq {
     };
   }
 
-  async awaitLockStatePromises() {
+  async awaitLockStatePromises(from: string) {
 
     if (!this.isLocked()) {
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), not locked');
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), not locked`);
       return;
     }
 
     try {
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), start for: ', this.lockedStateId);
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), start for: `, this.lockedStateId);
       await this.lockedStatePromise;
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), finished waiting this.lockedStatePromise');
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), finished waiting this.lockedStatePromise`);
     } catch (err) {
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), error', err);
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), error`, err);
     }
 
     try {
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking');
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), unlocking, for :`, this.lockedStateId);
       this.unlock();
     } catch (err) {
-      this.getLogger().debug(this.getThreadId(), 'this:awaitLockStatePromises(), unlocking error', err);
+      this.getLogger().debug(this.getThreadId(), `this:awaitLockStatePromises(${from}), unlocking error`, err);
     }
 
   }
 
-  async lock(identifier: string, executor: ExecutorParam) {
+  async waitForLocks(identifier: string, executor: ExecutorParam) {
 
-    await this.awaitLockStatePromises();
+    await this.awaitLockStatePromises(`lockUnlock(${identifier})`);
 
     if (this.isLocked()) {
-      throw new Error('this:lock() weird state, should not be locked')
+      throw new Error('this:lockUnlock() weird state, should not be locked')
+    }
+
+    const p = new Promise(executor);
+    this.getLogger().debug(this.getThreadId(), 'this:waitForLocks(), will create non lock promise:', p);
+    const res = await p;
+    this.getLogger().debug(this.getThreadId(), 'this:waitForLocks(), stopped awaiting non lock promise:', p);
+
+    return res;
+  }
+
+  async lockUnlock(identifier: string, executor: ExecutorParam) {
+
+    await this.awaitLockStatePromises(`lockUnlock(${identifier})`);
+
+    if (this.isLocked()) {
+      throw new Error('this:lockUnlock() weird state, should not be locked')
     }
 
     this.lockedStateId = identifier;
-    this.getLogger().debug(this.getThreadId(), 'this:lock(), creating lockedStatePromise for:', this.lockedStateId);
+    this.getLogger().debug(this.getThreadId(), 'this:lockUnlock(), creating lockedStatePromise for:', this.lockedStateId);
     this.lockedStatePromise = new Promise(executor);
-    this.getLogger().debug(this.getThreadId(), 'this:lock(), this.lockedStatePromise:', this.lockedStatePromise);
+    this.getLogger().debug(this.getThreadId(), 'this:lockUnlock(), this.lockedStatePromise:', this.lockedStatePromise);
 
-    return this.lockedStatePromise;
+    const res = await this.lockedStatePromise;
+
+    this.unlock();
+
+    return res;
   }
 
   unlock() {
-
-    if (!this.isLocked()) {
-      throw new Error('this:unlock() weird state, should be locked')
-    }
-
     this.getLogger().debug(this.getThreadId(), 'this:unlock(), for:', this.lockedStateId);
     this.lockedStateId = null;
     this.lockedStatePromise = null;
