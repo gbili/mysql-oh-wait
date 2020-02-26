@@ -212,7 +212,13 @@ export default class QueryFormat {
     } else if (isStringableArrayArray(ret)) {
       return this.joinUseParenthesis(ret);
     } else {
-      throw new Error('Ret is somehow undefined, not all cases have been handled, you are trying an unsupported usecase');
+      throw new Error(
+        `Ret: ${ret} is somehow undefined, not all cases have been handled, you are trying an unsupported usecase
+        Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}
+        values: ${Object.values(this.values).join(', ')}
+        hasOwnProperty : ${(this.values.hasOwnProperty(key) ? 'yes': 'no')}
+        Note: It may be a Promise, make sure all values are Stringable type and not some Promise lying around`
+      );
     }
   }
 }
