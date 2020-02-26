@@ -5,10 +5,11 @@ type Escape = Connection["escape"];
 type ObjOf<T> = { [k: string]: T; }
 type Stringable = string | boolean | number;
 type StringableObject = ObjOf<Stringable> | ObjOf<Stringable[]> | ObjOf<Stringable[][]>
+type StringableMixedObject = ObjOf<Stringable | Stringable[] | Stringable[][]>
 type StringableObj = ObjOf<Stringable>
 type StringableArrayObj = ObjOf<Stringable[]>
 type StringableArrayArrayObj = ObjOf<Stringable[][]>
-export type Values = StringableObject | Stringable[] | Stringable[][];
+export type Values = StringableMixedObject | StringableObject | Stringable[] | Stringable[][];
 
 function isStringable(val: any): val is Stringable {
   return typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean';
@@ -28,13 +29,19 @@ function isStringableArrayObj(val: any): val is StringableArrayObj {
 function isStringableArrayArrayObj(val: any): val is StringableArrayArrayObj {
     return isObjectAndAllValuesAreOfType<Stringable[][]>(val, isStringableArrayArray);
 }
+function isStringableMixedObj(val: any): val is StringableMixedObject {
+  return isPropObject(val)
+    && isObjectAndAllValuesAreOfType<Stringable | Stringable[] | Stringable[][]>(val, x => isStringable(x) || isStringableArray(x) || isStringableArrayArray(x));
+}
+function isPropObject(val: any): val is { [k: string]: any; } {
+  return typeof val === "object" && !(val instanceof Array);
+} 
 function isObjectAndAllValuesAreOfType<T>(val: any, typecheck: (x: any) => boolean): val is ObjOf<T> {
-  return typeof val === "object"
-    && !(val instanceof Array)
+  return isPropObject(val) 
     && elementsAreOfType<T>(Object.values(val), typecheck);
 } 
 function elementsAreOfType<T>(els: any[], typeCheck: (x: any) => boolean): els is T[] {
-  return els.filter((x: any) => typeCheck(x)).length === els.length 
+  return els.filter(typeCheck).length === els.length 
 }
 
 export default class QueryFormat {
@@ -173,22 +180,27 @@ export default class QueryFormat {
       // many :ref, :ref
         // g) object stringable
         // h) object stringable array
-    } else if (isStringableObj(this.values) && this.values.hasOwnProperty(key)) {// Not question mark aka -> named palceholders
+    } else if (this.values.hasOwnProperty(key)) {// Not question mark aka -> named palceholders
+      if (isStringableObj(this.values)) {
         // g) object stringable
-      ret = this.mapEscape(this.values[key], 0, false, ref); // stringable
-    } else if (isStringableArrayObj(this.values) && this.values.hasOwnProperty(key)) {
-        // e) object stringable array
-        // h) object stringable array
-      ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
-    } else if (isStringableArrayArrayObj(this.values) && this.values.hasOwnProperty(key)) {
-        // f) object stringable array array
-      ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
+        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable
+      } else if (isStringableArrayObj(this.values) && this.values.hasOwnProperty(key)) {
+          // e) object stringable array
+          // h) object stringable array
+        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
+      } else if (isStringableArrayArrayObj(this.values) && this.values.hasOwnProperty(key)) {
+          // f) object stringable array array
+        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
+      } else if (isStringableMixedObj(this.values)) {
+          // i) values is a mix of different types
+        ret = this.mapEscape((this.values as any)[key], 0, false, ref); // stringable[]
+      }
     } else {// named ref not present in values (dont replace anything)
       throw new Error(
         `Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}
-         values: ${Object.values(this.values).join(', ')}
-         hasOwnProperty : ${(this.values.hasOwnProperty(key) ? 'yes': 'no')}
-         Note: It may be a Promise, make sure all values are Stringable type and not some Promise lying around`
+        values: ${Object.values(this.values).join(', ')}
+        hasOwnProperty : ${(this.values.hasOwnProperty(key) ? 'yes': 'no')}
+        Note: It may be a Promise, make sure all values are Stringable type and not some Promise lying around`
       );
     }
 

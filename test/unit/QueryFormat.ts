@@ -17,81 +17,100 @@ describe(`QueryFormat`, function() {
   });
 
   describe(`QueryFormat.queryFormat(':ph1, :ph2', { ph1: 'a', ph2: 'b' })`, function() {
-    it(`should return 'a', 'b'`, async function() {
+    const expected = "'a', 'b'";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':ph1, :ph2', { ph1: 'a', ph2: 'b' })).to.be.equal("'a', 'b'");
+      expect(queryFormat.queryFormat(':ph1, :ph2', { ph1: 'a', ph2: 'b' })).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat('(:ph1, :ph2)', { ph1: 'a', ph2: 'b' })`, function() {
-    it(`should return ('a', 'b')`, async function() {
+    const expected = "('a', 'b')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat('(:ph1, :ph2)', { ph1: 'a', ph2: 'b' })).to.be.equal("('a', 'b')");
+      expect(queryFormat.queryFormat('(:ph1, :ph2)', { ph1: 'a', ph2: 'b' })).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':?, :?', [ 'a', 'b' ])`, function() {
-    it(`should return 'a', 'b'`, async function() {
+    const expected = "'a', 'b'";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':?, :?', [ 'a', 'b' ])).to.be.equal("'a', 'b'");
+      expect(queryFormat.queryFormat(':?, :?', [ 'a', 'b' ])).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat('(:?, :?)', [ 'a', 'b' ])`, function() {
-    it(`should return ('a', 'b')`, async function() {
+    const expected = "('a', 'b')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat('(:?, :?)', [ 'a', 'b' ])).to.be.equal("('a', 'b')");
+      expect(queryFormat.queryFormat('(:?, :?)', [ 'a', 'b' ])).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':ph1', { ph1: ['a', 'b'] })`, function() {
-    it(`should return ('a', 'b')`, async function() {
+    const expected = "('a', 'b')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':ph1', { ph1: ['a', 'b'] })).to.be.equal("('a', 'b')");
+      expect(queryFormat.queryFormat(':ph1', { ph1: ['a', 'b'] })).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':ph1, :ph2', { ph1: ['a', 'b'], ph2: ['c', 'd'] })`, function() {
-    it(`should return ('a', 'b'), ('c', 'd')`, async function() {
+    const expected = "('a', 'b'), ('c', 'd')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':ph1, :ph2', { ph1: ['a', 'b'], ph2: ['c', 'd'] })).to.be.equal("('a', 'b'), ('c', 'd')");
+      expect(queryFormat.queryFormat(':ph1, :ph2', { ph1: ['a', 'b'], ph2: ['c', 'd'] })).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':?', [ ['a', 'b'] ])`, function() {
-    it(`should return ('a', 'b')`, async function() {
+    const expected = "('a', 'b')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':?', [ ['a', 'b'] ])).to.be.equal("('a', 'b')");
+      expect(queryFormat.queryFormat(':?', [ ['a', 'b'] ])).to.be.equal(expected);
     });
   });
 
   // Needs special case that knows it needs to pass the full values array instead of popping when single qmark in query
   describe(`QueryFormat.queryFormat(':?', [ ['a', 'b'], ['c', 'd'] ])`, function() {
-    it(`should return ('a', 'b'), ('c', 'd')`, async function() {
+    const expected = "('a', 'b'), ('c', 'd')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':?', [ ['a', 'b'], ['c', 'd'] ])).to.be.equal("('a', 'b'), ('c', 'd')");
+      expect(queryFormat.queryFormat(':?', [ ['a', 'b'], ['c', 'd'] ])).to.be.equal(expected);
     });
   });
 
   // Needs special case that knows it needs to pass the full values array instead of popping when single qmark in query
   describe(`QueryFormat.queryFormat(':?, :?', [ ['a', 'b'], ['c', 'd'] ])`, function() {
-    it(`should return ('a', 'b'), ('c', 'd')`, async function() {
+    const expected = "('a', 'b'), ('c', 'd')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':?, :?', [ ['a', 'b'], ['c', 'd'] ])).to.be.equal("('a', 'b'), ('c', 'd')");
+      expect(queryFormat.queryFormat(':?, :?', [ ['a', 'b'], ['c', 'd'] ])).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':ph1', { ph1: [ ['a', 'b'], ['c', 'd'] ] })`, function() {
-    it(`should return ('a', 'b'), ('c', 'd')`, async function() {
+    const expected = "('a', 'b'), ('c', 'd')";
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':ph1', { ph1: [ ['a', 'b'], ['c', 'd'] ] })).to.be.equal("('a', 'b'), ('c', 'd')");
+      expect(queryFormat.queryFormat(':ph1', { ph1: [ ['a', 'b'], ['c', 'd'] ] })).to.be.equal(expected);
     });
   });
 
   describe(`QueryFormat.queryFormat(':?', { ph1: 'a', ph2: 'b'})`, function() {
-    it(`should return ph1 = 'a' AND ph2 = 'b'`, async function() {
+    const expected = `ph1 = 'a' AND ph2 = 'b'`;
+    it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      expect(queryFormat.queryFormat(':?', { ph1: 'a', ph2: 'b'})).to.be.equal("ph1 = 'a' AND ph2 = 'b'");
+      expect(queryFormat.queryFormat(':?', { ph1: 'a', ph2: 'b'})).to.be.equal(expected);
+    });
+  });
+
+  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: ['a', 'b'] })`, function() {
+    const expected = `('a', 'b') AND 'c'`;
+    it(`should return ${expected}`, async function() {
+      const queryFormat = new QueryFormat((fakeEscape as Connection));
+      expect(queryFormat.queryFormat(':ph1 AND :ph2', { ph1: ['a', 'b'], ph2: 'c' })).to.be.equal(expected);
     });
   });
 
