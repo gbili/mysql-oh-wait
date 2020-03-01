@@ -114,4 +114,23 @@ describe(`QueryFormat`, function() {
     });
   });
 
+  describe(`QueryFormat.toMysqlDatetime(date)`, function() {
+    const date1 = new Date(Date.parse('2020-03-01T09:40:16.767Z'));
+    const expected = '2020-03-01 09:40:16';
+    it(`should return ${expected}`, async function() {
+      expect(QueryFormat.toMysqlDatetime(date1)).to.be.equal(expected);
+    });
+  });
+
+  describe(`QueryFormat.queryFormat(':?', [['a', 'b', false, new Date()]['a', 'b', 1, new Date()]])`, function() {
+    const date1 = new Date(Date.parse('2020-03-01T09:40:16.767Z'));
+    const date2 = new Date(Date.parse('2020-04-01T09:40:16.767Z'));
+    const expected = `('a', 'b', '0', '${QueryFormat.toMysqlDatetime(date1)}'), ('c', 'd', '1', '${QueryFormat.toMysqlDatetime(date2)}')`;
+    it(`should return ${expected}`, async function() {
+      const queryFormat = new QueryFormat((fakeEscape as Connection));
+      const vals =[['a', 'b', false, date1], ['c', 'd', 1, date2]]; 
+      expect(queryFormat.queryFormat(':?', vals)).to.be.equal(expected);
+    });
+  });
+
 });

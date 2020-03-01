@@ -3,7 +3,7 @@ import { Connection } from "mysql";
 type Escape = Connection["escape"];
 
 type ObjOf<T> = { [k: string]: T; }
-type Stringable = string | boolean | number;
+type Stringable = string | boolean | number | Date;
 type StringableObject = ObjOf<Stringable> | ObjOf<Stringable[]> | ObjOf<Stringable[][]>
 type StringableMixedObject = ObjOf<Stringable | Stringable[] | Stringable[][]>
 type StringableObj = ObjOf<Stringable>
@@ -12,7 +12,13 @@ type StringableArrayArrayObj = ObjOf<Stringable[][]>
 export type Values = StringableMixedObject | StringableObject | Stringable[] | Stringable[][];
 
 function isStringable(val: any): val is Stringable {
-  return typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean';
+  return typeof val !== 'undefined'
+    && (
+      typeof val === 'string'
+      || typeof val === 'number'
+      || typeof val === 'boolean'
+      || val instanceof Date
+    );
 }
 function isStringableArray(val: any): val is Stringable[] {
   return val instanceof Array && (val.length > 0 && elementsAreOfType<Stringable>(val, isStringable));
@@ -56,10 +62,18 @@ export default class QueryFormat {
     this.replacer = this.replacer.bind(this);
   }
 
-  mapEscape(val: Stringable, depth: number, isQuestionMark: boolean, ref?: string): string 
-  mapEscape(val: Stringable[], depth: number, isQuestionMark: boolean, ref?: string): string[]
-  mapEscape(val: Stringable[][], depth: number, isQuestionMark: boolean, ref?: string): string[][]
-  mapEscape(val: Stringable | Stringable[] | Stringable[][], depth: number, isQuestionMark: boolean, ref?: string): string | string[] | string[][] {
+  mapEscape(val: Stringable, depth: number, ref?: string): string 
+  mapEscape(val: Stringable[], depth: number, ref?: string): string[]
+  mapEscape(val: Stringable[][], depth: number, ref?: string): string[][]
+  mapEscape(val: Stringable | Stringable[] | Stringable[][], depth: number, ref?: string): string | string[] | string[][] {
+    if (val instanceof Date) {
+      val = QueryFormat.toMysqlDatetime(val);
+    }
+
+    if (typeof val === 'boolean') {
+      val = val ? 1 : 0;
+    }
+
     if (isStringable(val)) {
       return this.escape(val);
     }
@@ -77,12 +91,16 @@ export default class QueryFormat {
     }
 
     if (isStringableArray(val)) {
-      return val.map((el: Stringable) => this.mapEscape(el, depth + 1, isQuestionMark));
+      return val.map((el: Stringable) => this.mapEscape(el, depth + 1));
     } else if (isStringableArrayArray(val)) {
-      return val.map((el: Stringable[]) => this.mapEscape(el, depth + 1, isQuestionMark));
+      return val.map((el: Stringable[]) => this.mapEscape(el, depth + 1));
     } else {
       return val;
     }
+  }
+
+  static toMysqlDatetime(d: Date): string {
+    return d.toISOString().slice(0,19).replace('T', ' ');
   }
 
 
@@ -98,16 +116,16 @@ export default class QueryFormat {
       throw new Error('Empty arrays are not allowed as value');
     }
 
-    const glueColonsSurroundParents = (el: string[]) => `(${el.join(', ')})`;
+    const glueWithColonsSurroundWithParenthesis = (el: string[]) => `(${el.join(', ')})`;
 
     if (isStringableArrayArray(escapedValues)) {
-      escapedValues = escapedValues.map(glueColonsSurroundParents)
+      escapedValues = escapedValues.map(glueWithColonsSurroundWithParenthesis)
       return escapedValues.join(', ')
     } else {
       if (escapedValues[0][0] === '(') {
         return escapedValues.join(', ')
       }
-      return glueColonsSurroundParents(escapedValues);
+      return glueWithColonsSurroundWithParenthesis(escapedValues);
     }
   }
 
@@ -156,10 +174,10 @@ export default class QueryFormat {
       if (this.matchesCount === 1) {
         if (isStringableArrayArray(this.copyOfValuesWhenArray)) {
           // a) stringable array array
-          ret = this.mapEscape(this.copyOfValuesWhenArray, 0, true, ref); // string[][]
+          ret = this.mapEscape(this.copyOfValuesWhenArray, 0, ref); // string[][]
         } else {
           // -> unknown case)
-          ret = this.mapEscape(this.copyOfValuesWhenArray, 0, true, ref); // string[]
+          ret = this.mapEscape(this.copyOfValuesWhenArray, 0, ref); // string[]
         }
       } else { // matchesCount =0 or >=2
         // c) stringable array
@@ -169,9 +187,9 @@ export default class QueryFormat {
         if (replaceWithNext === undefined) {
           throw new Error('More question marks than elements');
         } else if (isStringableArray(replaceWithNext))  {
-          ret = this.mapEscape(replaceWithNext, 0, true, ref); // stringable[]
+          ret = this.mapEscape(replaceWithNext, 0, ref); // stringable[]
         } else if (isStringable(replaceWithNext)) {
-          ret = this.mapEscape(replaceWithNext, 0, true, ref); // stringable
+          ret = this.mapEscape(replaceWithNext, 0, ref); // stringable
         }
       }
       // single :ref
@@ -183,17 +201,17 @@ export default class QueryFormat {
     } else if (this.values.hasOwnProperty(key)) {// Not question mark aka -> named palceholders
       if (isStringableObj(this.values)) {
         // g) object stringable
-        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable
+        ret = this.mapEscape(this.values[key], 0, ref); // stringable
       } else if (isStringableArrayObj(this.values) && this.values.hasOwnProperty(key)) {
           // e) object stringable array
           // h) object stringable array
-        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
+        ret = this.mapEscape(this.values[key], 0, ref); // stringable[]
       } else if (isStringableArrayArrayObj(this.values) && this.values.hasOwnProperty(key)) {
           // f) object stringable array array
-        ret = this.mapEscape(this.values[key], 0, false, ref); // stringable[]
+        ret = this.mapEscape(this.values[key], 0, ref); // stringable[]
       } else if (isStringableMixedObj(this.values)) {
           // i) values is a mix of different types
-        ret = this.mapEscape((this.values as any)[key], 0, false, ref); // stringable[]
+        ret = this.mapEscape((this.values as any)[key], 0, ref); // stringable[]
       }
     } else {// named ref not present in values (dont replace anything)
       throw new Error(
@@ -212,6 +230,12 @@ export default class QueryFormat {
     } else if (isStringableArrayArray(ret)) {
       return this.joinUseParenthesis(ret);
     } else {
+      console.log('========== ERRAH ============');
+      console.log('An error is going to be raised, probably because you passed an object with more props than used');
+      console.log('REF   : : : ', ref);
+      console.log('KEY   : : : ', key);
+      console.log('VALUES: : : ', this.values);
+      console.log('RETRET: : : ', ret);
       throw new Error(
         `Ret: ${ret} is somehow undefined, not all cases have been handled, you are trying an unsupported usecase
         Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}
