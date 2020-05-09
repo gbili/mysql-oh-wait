@@ -3,7 +3,7 @@ import { Connection } from "mysql";
 type Escape = Connection["escape"];
 
 type ObjOf<T> = { [k: string]: T; }
-type Stringable = string | boolean | number | Date;
+type Stringable = string | boolean | number | Date | null;
 type StringableObject = ObjOf<Stringable> | ObjOf<Stringable[]> | ObjOf<Stringable[][]>
 type StringableMixedObject = ObjOf<Stringable | Stringable[] | Stringable[][]>
 type StringableObj = ObjOf<Stringable>
@@ -18,6 +18,7 @@ function isStringable(val: any): val is Stringable {
       || typeof val === 'number'
       || typeof val === 'boolean'
       || val instanceof Date
+      || val === null 
     );
 }
 function isStringableArray(val: any): val is Stringable[] {
@@ -72,6 +73,8 @@ export default class QueryFormat {
 
     if (typeof val === 'boolean') {
       val = val ? 1 : 0;
+    } else if (val === null) {
+       return 'NULL';
     }
 
     if (isStringable(val)) {
@@ -166,7 +169,13 @@ export default class QueryFormat {
         // d) stringable array array
       if (isStringableObj(this.values)) {
         // b) object stringable
-        return Object.keys(this.values).map((k: string) =>`${k} = ${this.escape((this.values as StringableObj)[k])}`).join(' AND ');
+        return Object.keys(this.values).map((k: string) => {
+          const val = (this.values as StringableObj)[k]
+          return val === null
+            ? `${k} IS NULL`
+            : `${k} = ${this.escape(val)}`
+          return ;
+        }).join(' AND ');
       } else if (!this.copyOfValuesWhenArray) {
         throw new Error('the :? placeholder requires values to be an array');
       }

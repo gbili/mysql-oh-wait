@@ -106,11 +106,27 @@ describe(`QueryFormat`, function() {
     });
   });
 
+  describe(`QueryFormat.queryFormat(':?', { ph1: null, ph2: 'b'})`, function() {
+    const expected = `ph1 IS NULL AND ph2 = 'b'`;
+    it(`should return ${expected}`, async function() {
+      const queryFormat = new QueryFormat((fakeEscape as Connection));
+      expect(queryFormat.queryFormat(':?', { ph1: null, ph2: 'b'})).to.be.equal(expected);
+    });
+  });
+
   describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: ['a', 'b'] })`, function() {
     const expected = `('a', 'b') AND 'c'`;
     it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
       expect(queryFormat.queryFormat(':ph1 AND :ph2', { ph1: ['a', 'b'], ph2: 'c' })).to.be.equal(expected);
+    });
+  });
+
+  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: [null, 'b'] })`, function() {
+    const expected = `(NULL, 'b') AND 'c'`;
+    it(`should return ${expected}`, async function() {
+      const queryFormat = new QueryFormat((fakeEscape as Connection));
+      expect(queryFormat.queryFormat(':ph1 AND :ph2', { ph1: [null, 'b'], ph2: 'c' })).to.be.equal(expected);
     });
   });
 
