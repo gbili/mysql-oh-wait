@@ -135,14 +135,16 @@ describe(`MysqlReq`, function() {
         DB_USER: 'user',
         DB_PASSWORD: 'password',
         DB_NAME: 'test_db',
-        DB_CHARSET: 'utf8mb4'
+        DB_CHARSET: 'utf8mb4',
+        DB_COLLATION: 'utf8mb4_general_ci'
       };
       expect(MysqlReq.extractConfigFromEnv(env)).to.deep.equal({
         host: 'localhost',
         user: 'user',
         password: 'password',
         database: 'test_db',
-        charset: 'utf8mb4'
+        charset: 'utf8mb4',
+        collation: 'utf8mb4_general_ci'
       });
     });
   });

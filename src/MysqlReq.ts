@@ -21,6 +21,7 @@ export type UserProvidedEnvVarNames = {
   password: string;
   database: string;
   charset?: string;
+  collation?: string;
 };
 
 export type ConfigPropsOptional = {
@@ -29,6 +30,7 @@ export type ConfigPropsOptional = {
   password?: string;
   database?: string;
   charset?: string;
+  collation?: string;
 }
 
 export type RequestorEnvVarNames = {
@@ -37,6 +39,7 @@ export type RequestorEnvVarNames = {
   password: 'DB_PASSWORD';
   database: 'DB_NAME';
   charset: 'DB_CHARSET';
+  collation: 'DB_COLLATION';
 }
 
 export type ConnectionConfigOptions = {
@@ -45,6 +48,7 @@ export type ConnectionConfigOptions = {
   password: string | null;
   database: string | null;
   charset: string | null;
+  collation: string | null;
 };
 
 export type ConnectionInfo = {
@@ -419,6 +423,7 @@ export default class MysqlReq {
       password: 'DB_PASSWORD',
       database: 'DB_NAME',
       charset: 'DB_CHARSET',
+      collation: 'DB_COLLATION',
     };
   }
 
