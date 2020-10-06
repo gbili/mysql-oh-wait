@@ -130,7 +130,20 @@ describe(`MysqlReq`, function() {
 
   describe(`MysqlReq.extractConfigFromEnv()`, function() {
     it('should be able to load connection config from env variables and return it', async function() {
-      expect(MysqlReq.extractConfigFromEnv(process.env)).to.be.an('object');
+      const env = {
+        DB_HOST: 'localhost',
+        DB_USER: 'user',
+        DB_PASSWORD: 'password',
+        DB_NAME: 'test_db',
+        DB_CHARSET: 'utf8mb4'
+      };
+      expect(MysqlReq.extractConfigFromEnv(env)).to.deep.equal({
+        host: 'localhost',
+        user: 'user',
+        password: 'password',
+        database: 'test_db',
+        charset: 'utf8mb4'
+      });
     });
   });
 

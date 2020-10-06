@@ -15,13 +15,20 @@ export type RequiredConfigProps = {
   database: string;
 }
 
-export type UserProvidedEnvVarNames = RequiredConfigProps;
+export type UserProvidedEnvVarNames = {
+  host: string;
+  user: string;
+  password: string;
+  database: string;
+  charset?: string;
+};
 
 export type ConfigPropsOptional = {
   host?: string;
   user?: string;
   password?: string;
   database?: string;
+  charset?: string;
 }
 
 export type RequestorEnvVarNames = {
@@ -29,6 +36,7 @@ export type RequestorEnvVarNames = {
   user: 'DB_USER';
   password: 'DB_PASSWORD';
   database: 'DB_NAME';
+  charset: 'DB_CHARSET';
 }
 
 export type ConnectionConfigOptions = {
@@ -36,6 +44,7 @@ export type ConnectionConfigOptions = {
   user: string | null;
   password: string | null;
   database: string | null;
+  charset: string | null;
 };
 
 export type ConnectionInfo = {
@@ -409,17 +418,23 @@ export default class MysqlReq {
       user: 'DB_USER',
       password: 'DB_PASSWORD',
       database: 'DB_NAME',
+      charset: 'DB_CHARSET',
     };
   }
 
   static extractConfigFromEnv(env: any, envVarNames?: UserProvidedEnvVarNames): ConfigPropsOptional {
-    envVarNames = envVarNames || MysqlReq.getDefaultEnvVarNames();
-    return {
-      host: env[envVarNames.host] || null,
-      user: env[envVarNames.user] || null,
-      password: env[envVarNames.password] || null,
-      database: env[envVarNames.database] || null,
-    }
+    const envVNames = envVarNames || MysqlReq.getDefaultEnvVarNames();
+    return Object.keys(envVNames).reduce((res, mysqljsConfKey, i) => {
+      const envVarName = (envVNames as { [k: string]: string; })[mysqljsConfKey];
+      return (envVarName && env[envVarName] !== undefined)
+      ? {
+        ...res,
+        [mysqljsConfKey]: env[envVarName]
+      }
+      : {
+        ...res,
+      };
+    }, {});
   }
 
   static isMissingConfigProps(config: ConfigPropsOptional): boolean {
