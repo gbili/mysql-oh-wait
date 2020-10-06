@@ -148,7 +148,7 @@ export default class QueryFormat {
     const matches = query.match(regex);
 
     if (matches === null) {
-      throw new Error('There is an error in your regex');
+      throw new Error('Your query does not contain any placeholder');
     }
 
     this.matchesCount = matches.length;
