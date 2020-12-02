@@ -138,13 +138,22 @@ describe(`QueryFormat`, function() {
     });
   });
 
-  describe(`QueryFormat.queryFormat(':?', [['a', 'b', false, new Date()]['a', 'b', 1, new Date()]])`, function() {
+  describe(`QueryFormat.queryFormat(':?', [['a', 'b', false, new Date()]['c', 'd', 1, new Date()]])`, function() {
     const date1 = new Date(Date.parse('2020-03-01T09:40:16.767Z'));
     const date2 = new Date(Date.parse('2020-04-01T09:40:16.767Z'));
     const expected = `('a', 'b', '0', '${QueryFormat.toMysqlDatetime(date1)}'), ('c', 'd', '1', '${QueryFormat.toMysqlDatetime(date2)}')`;
     it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
       const vals =[['a', 'b', false, date1], ['c', 'd', 1, date2]];
+      expect(queryFormat.queryFormat(':?', vals)).to.be.equal(expected);
+    });
+  });
+
+  describe(`QueryFormat.queryFormat(':?', [['a', 'b', null, 4]['c', 'd', 'e', 33]])`, function() {
+    const expected = `('a', 'b', NULL, '4'), ('c', 'd', 'e', '33')`;
+    it(`should return ${expected}`, async function() {
+      const queryFormat = new QueryFormat((fakeEscape as Connection));
+      const vals =[['a', 'b', null, 4], ['c', 'd', 'e', 33]];
       expect(queryFormat.queryFormat(':?', vals)).to.be.equal(expected);
     });
   });
