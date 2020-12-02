@@ -144,7 +144,7 @@ describe(`QueryFormat`, function() {
     const expected = `('a', 'b', '0', '${QueryFormat.toMysqlDatetime(date1)}'), ('c', 'd', '1', '${QueryFormat.toMysqlDatetime(date2)}')`;
     it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
-      const vals =[['a', 'b', false, date1], ['c', 'd', 1, date2]]; 
+      const vals =[['a', 'b', false, date1], ['c', 'd', 1, date2]];
       expect(queryFormat.queryFormat(':?', vals)).to.be.equal(expected);
     });
   });

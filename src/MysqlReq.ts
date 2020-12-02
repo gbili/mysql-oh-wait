@@ -63,9 +63,9 @@ export declare type LoggerInterface = {
 }
 
 export declare interface MysqlReqConstructor {
-  new (config: ConnectionConfigOptions): MysqlReq; 
+  new (config: ConnectionConfigOptions): MysqlReq;
   getDefaultEnvVarNames: () => RequestorEnvVarNames
-  extractConfigFromEnv: (env: Object, envVarNames: RequestorEnvVarNames) => ConnectionConfigOptions; 
+  extractConfigFromEnv: (env: Object, envVarNames: RequestorEnvVarNames) => ConnectionConfigOptions;
   isMissingConfigProps: (config: ConnectionConfigOptions) => boolean;
 }
 
@@ -80,10 +80,10 @@ export type MysqlReqConfig = {
 };
 
 export type MysqlReqInjectProps = {
-  adapter?: AdapterInterface,
-  logger?: LoggerInterface,
-  env?: any 
-  envVarNames?: UserProvidedEnvVarNames 
+  adapter?: AdapterInterface;
+  logger?: LoggerInterface;
+  env?: any;
+  envVarNames?: UserProvidedEnvVarNames;
 };
 
 export default class MysqlReq {

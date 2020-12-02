@@ -10,10 +10,10 @@ export type InjectProps = {
   existsSync?: typeof existsSync;
 }
 
-export interface ExecuteSqlFileOptProps { 
+export interface ExecuteSqlFileOptProps {
   filePath: string;
   disconnectOnFinish?: boolean;
-  connectionConfig?: ConnectionConfig
+  connectionConfig?: ConnectionConfig;
 }
 
 class MysqlDump {

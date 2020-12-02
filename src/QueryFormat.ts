@@ -18,7 +18,7 @@ function isStringable(val: any): val is Stringable {
       || typeof val === 'number'
       || typeof val === 'boolean'
       || val instanceof Date
-      || val === null 
+      || val === null
     );
 }
 function isStringableArray(val: any): val is Stringable[] {
@@ -42,13 +42,13 @@ function isStringableMixedObj(val: any): val is StringableMixedObject {
 }
 function isPropObject(val: any): val is { [k: string]: any; } {
   return typeof val === "object" && !(val instanceof Array);
-} 
+}
 function isObjectAndAllValuesAreOfType<T>(val: any, typecheck: (x: any) => boolean): val is ObjOf<T> {
-  return isPropObject(val) 
+  return isPropObject(val)
     && elementsAreOfType<T>(Object.values(val), typecheck);
-} 
+}
 function elementsAreOfType<T>(els: any[], typeCheck: (x: any) => boolean): els is T[] {
-  return els.filter(typeCheck).length === els.length 
+  return els.filter(typeCheck).length === els.length
 }
 
 export default class QueryFormat {
@@ -63,7 +63,7 @@ export default class QueryFormat {
     this.replacer = this.replacer.bind(this);
   }
 
-  mapEscape(val: Stringable, depth: number, ref?: string): string 
+  mapEscape(val: Stringable, depth: number, ref?: string): string
   mapEscape(val: Stringable[], depth: number, ref?: string): string[]
   mapEscape(val: Stringable[][], depth: number, ref?: string): string[][]
   mapEscape(val: Stringable | Stringable[] | Stringable[][], depth: number, ref?: string): string | string[] | string[][] {
