@@ -1,10 +1,12 @@
-import ActionResult from './ActionResult';
 import { ConnectionConfig, Connection, MysqlError, QueryOptions, queryCallback } from 'mysql';
+import { ActionResult } from './ActionResult';
+import OhWaitError from './OhWaitError';
 import QueryFormat, { Values } from './QueryFormat';
 
 export interface ReqQueryOptions extends QueryOptions {
   after?: (p: any) => any;
 }
+
 
 export type ExecutorParam = <S extends (value?: any) => any, T extends (reason?: any) => any>(resolve: S, reject: T) => void
 
@@ -40,6 +42,7 @@ export type RequestorEnvVarNames = {
   database: 'DB_NAME';
   charset: 'DB_CHARSET';
   collation: 'DB_COLLATION';
+  multipleStatements: 'MULTIPLE_STATEMENTS',
 }
 
 export type ConnectionConfigOptions = {
@@ -86,6 +89,17 @@ export type MysqlReqInjectProps = {
   envVarNames?: UserProvidedEnvVarNames;
 };
 
+// export interface MysqlReqInterface {
+//   query<T>(
+//     { sql, values }: { sql: QueryOptions["sql"]; values?: QueryOptions["values"]; },
+//     after?: undefined
+//   ): Promise<ActionResult<T>>;
+//   query<T extends (arg: any) => any>(
+//     { sql, values }: { sql: QueryOptions["sql"]; values?: QueryOptions["values"]; },
+//     after: T extends (arg: infer A) => infer U ? (arg: A) => U : undefined
+//   ): Promise<ActionResult<ReturnType<T>>>;
+// }
+
 export default class MysqlReq {
   public logger: LoggerInterface;
   public adapter: AdapterInterface | null;
@@ -120,6 +134,13 @@ export default class MysqlReq {
     if (config) {
       this.setConnectionConfig(config);
     }
+  }
+
+  getActionResult<T>(props: { value: T; error?: MysqlError | OhWaitError; } | { value?: T; error: MysqlError | OhWaitError; }): ActionResult<T> {
+    return {
+      ...props,
+      info: this.getConnectionInfo(),
+    };
   }
 
   setAdapter(mysqlAdapter: AdapterInterface) {
@@ -230,7 +251,6 @@ export default class MysqlReq {
   }
 
   async connect() {
-    let error: MysqlError | null = null;
 
     if (!(await this.isConnected())) {
       if (!this.hasConnection()) {
@@ -250,21 +270,15 @@ export default class MysqlReq {
         this.getLogger().debug(this.getThreadId(), `this:connect(), Connected to database, threadId: ${ this.getThreadId() }`);
       } catch (err) {
         this.getLogger().debug(this.getThreadId(), 'this:connect(), trouble connecting threw: ', err);
-        error = err;
+        return this.getActionResult<number|null>({ error: err as MysqlError });
       }
     }
 
-    return new ActionResult(
-      this.getThreadId(),
-      error,
-      this.getConnectionInfo(),
-    );
+    return this.getActionResult({ value: this.getThreadId() });
   }
 
   async disconnect() {
-
-    let error = null;
-    let didDisconnect = false;
+    type DidDisconnectRet = { didDisconnect: boolean; };
 
     if (await this.isConnected()) {
       this.getLogger().debug(this.getThreadId(), 'this:disconnect(), isConnected: true', this.getThreadId());
@@ -276,60 +290,45 @@ export default class MysqlReq {
         });
 
         this.mysqlConnection = null;
+        return this.getActionResult({ value: { didDisconnect: true } });
       } catch (err) {
         this.getLogger().debug(this.getThreadId(), 'this:disconnect(), difficulties disconnecting', err);
-        error = err;
+        return this.getActionResult<DidDisconnectRet>({ error: err as MysqlError, });
       }
-      didDisconnect = true;
     }
 
-    if (!error && await this.isConnected()) {
-      error = new Error('Weird error, still connected after disconnect attempt');
+    if (await this.isConnected()) {
+      return this.getActionResult<DidDisconnectRet>({ error: new OhWaitError('Weird error, still connected after disconnect attempt'), })
     }
 
-    return new ActionResult(
-      didDisconnect,
-      error,
-      this.getConnectionInfo(),
-    );
+    return this.getActionResult({ value: { didDisconnect: false } });
   }
 
-  async query({ sql, values, after }: ReqQueryOptions) {
-
-    if (!(await this.isConnected())) {
-      this.getLogger().debug(this.getThreadId(), 'this.query() You did not connect manually, attempting automatic connection');
-      const connectResult = await this.connect();
-      if (connectResult.error !== null) {
-        this.getLogger().debug(this.getThreadId(), 'this.query() Automatic connection attempt failed, cannot continue with query');
-        throw connectResult.error;
-      }
-    }
-
-    let result = null;
-    let error: MysqlError | null = null;
+  async query<T>({ sql, values }: QueryOptions): Promise<ActionResult<T>> {
 
     try {
-      const connection = this.getConnection();
 
-      result = await this.waitForLocks('::query():' + sql, (resolve, reject) => {
-        const cb: queryCallback = (err, result) => (err ? reject(err) : resolve(result));
+      if (!(await this.isConnected())) {
+        this.getLogger().debug(this.getThreadId(), 'this.query() You did not connect manually, attempting automatic connection');
+        const connectResult = await this.connect();
+        if (connectResult.error) {
+          this.getLogger().debug(this.getThreadId(), 'this.query() Automatic connection attempt failed, cannot continue with query');
+          throw connectResult.error;
+        }
+      }
+
+      const connection = this.getConnection();
+      const result: T = await this.waitForLocks('::query():' + sql, (resolve, reject) => {
+        const cb: queryCallback = (err, result) => err ? reject(err) : resolve(result);
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
-      });
+      }) as T;
+
+      return this.getActionResult({ value: result });
 
     } catch (err) {
       this.getLogger().debug(this.getThreadId(), 'this.query() failed', err);
-      error = err;
+      return this.getActionResult({ error: err as MysqlError });
     }
-
-    if (null === error && typeof after === 'function') {
-      result = after(result);
-    }
-
-    return new ActionResult(
-      result,
-      error,
-      this.getConnectionInfo(),
-    );
   }
 
   getConnectionInfo(): ConnectionInfo {
@@ -424,6 +423,7 @@ export default class MysqlReq {
       database: 'DB_NAME',
       charset: 'DB_CHARSET',
       collation: 'DB_COLLATION',
+      multipleStatements: 'MULTIPLE_STATEMENTS',
     };
   }
 

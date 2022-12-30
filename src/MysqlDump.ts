@@ -83,18 +83,17 @@ class MysqlDump {
         : {};
     }
 
-    let { multipleStatements, ...connectionConfigWithoutMS } = connectionConfig;
-
     this.getRequestor().setConnectionConfig({
+      ...connectionConfig,
       multipleStatements: true,
-      ...connectionConfigWithoutMS
     });
 
-    if (typeof disconnectOnFinish === 'undefined') {
-      disconnectOnFinish = true;
-    }
-
-    await this.executeSqlFileOnExistingConnection({ filePath, disconnectOnFinish });
+    await this.executeSqlFileOnExistingConnection({
+      filePath,
+      disconnectOnFinish: disconnectOnFinish === undefined
+        ? true
+        : disconnectOnFinish
+    });
   }
 }
 

@@ -3,7 +3,6 @@ import mysql from 'mysql';
 import { logger } from 'saylo';
 import uuidv4 from 'uuid/v4';
 import MysqlReq from '../../src/MysqlReq';
-import ActionResult from '../../src/ActionResult';
 
 describe(`MysqlReq`, function() {
 
@@ -13,15 +12,16 @@ describe(`MysqlReq`, function() {
   describe(`MysqlReq.constructor({adapter, logger, connectionConfig})`, function() {
     it('should be able to get an ActionResult', async function() {
       const config = {
-        multipleStatements: false,
         ...MysqlReq.extractConfigFromEnv(process.env),
+        multipleStatements: false,
       };
       const req = new MysqlReq({
         adapter: mysql,
         connectionConfig: config
       });
       const actionResult = await req.connect();
-      expect(actionResult).to.be.an.instanceof(ActionResult);
+      expect(typeof actionResult === 'object').to.be.true;
+      expect(typeof actionResult.info !== undefined).to.be.true;
       await req.removeConnection();
     });
 
@@ -326,10 +326,11 @@ describe(`MysqlReq`, function() {
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
 
-      const actionResult = await req.query({sql: 'SHOW TABLES'});
-      expect(actionResult.value).to.be.a('array');
-      expect(actionResult.error).to.be.equal(null);
-      expect(actionResult?.info?.threadId).to.be.a('number');
+      const actionResult = await req.query<{ [k: string]: string; }[]>({ sql: 'SHOW TABLES' });
+
+      expect(actionResult.value).to.be.an('array');
+      expect(typeof actionResult.error === 'undefined').to.be.true;
+      expect(actionResult.info.threadId).to.be.a('number');
 
       await req.removeConnection();
     });
@@ -345,28 +346,9 @@ describe(`MysqlReq`, function() {
         connectionConfig: config
       });
 
-      const actionResult = await req.query({sql: 'BAD SQL'});
-      expect(actionResult.value).to.be.equal(null);
-      expect(actionResult.error).to.not.be.equal(null);
-      expect(actionResult?.info?.threadId).to.be.a('number');
-
-      await req.removeConnection();
-    });
-
-    it('should not execute after method, on BAD SQL query error', async function() {
-      const config = {
-        multipleStatements: false,
-        ...MysqlReq.extractConfigFromEnv(process.env),
-      };
-      const req = new MysqlReq({
-        adapter: mysql,
-        logger: logger,
-        connectionConfig: config
-      });
-
-      const actionResult = await req.query({sql: 'BAD SQL', after: (res) => 'resultAltered'});
-      expect(actionResult.value).to.not.be.equal('resultAltered');
-      expect(actionResult.error).to.not.be.equal(null);
+      const actionResult = await req.query({ sql: 'BAD SQL' });
+      expect(typeof actionResult.value === 'undefined').to.be.true;
+      expect(actionResult.error).to.not.be.undefined;
       expect(actionResult?.info?.threadId).to.be.a('number');
 
       await req.removeConnection();
@@ -384,8 +366,9 @@ describe(`MysqlReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      const actionResult = await req.query({sql: 'SHOW TABLES', after: res => 'altered'});
-      expect(actionResult.value).to.be.equal('altered');
+      const actionResult = await req.query<{ [k: string]: string; }[]>({ sql: 'SHOW TABLES' });
+      const after = (_: any) => 'altered';
+      expect(after(actionResult.value)).to.be.equal('altered');
       await req.removeConnection();
     });
 
@@ -402,7 +385,7 @@ describe(`MysqlReq`, function() {
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
       const uniqueID = uuidv4().substring(0, 14);
-      const actionResult = await req.query({
+      const actionResult = await req.query<{ insertId: number; }>({
         sql: 'INSERT INTO BookRepeated (title, author) VALUES :books',
         values: {
           books: [
@@ -413,7 +396,7 @@ describe(`MysqlReq`, function() {
         },
       });
       console.log(actionResult.error);
-      expect(actionResult.value.insertId).to.be.a('number');
+      expect(actionResult.value?.insertId).to.be.a('number');
       await req.removeConnection();
     });
 
@@ -430,7 +413,7 @@ describe(`MysqlReq`, function() {
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
       const uniqueID = uuidv4().substring(0, 14);
-      const actionResult = await req.query({
+      const actionResult = await req.query<{ insertId: number; }>({
         sql: 'INSERT INTO BookRepeated (title, author) VALUES :?',
         values: [
           ['big lebowsky', uniqueID + '1'],
@@ -439,7 +422,7 @@ describe(`MysqlReq`, function() {
         ],
       });
       console.log(actionResult.error);
-      expect(actionResult.value.insertId).to.be.a('number');
+      expect(actionResult.value?.insertId).to.be.a('number');
       await req.removeConnection();
     });
 
@@ -455,7 +438,7 @@ describe(`MysqlReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      const actionResult = await req.query({
+      const actionResult = await req.query<{ title: string; }[]>({
         sql: 'SELECT title FROM BookRepeated WHERE title IN :books',
         values: {
           books: ['big lebo;wsky', 'random lebos', `a'really'); SELECT * FROM Tag WHERE 1=1;` ],
@@ -478,7 +461,7 @@ describe(`MysqlReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      const actionResult = await req.query({
+      const actionResult = await req.query<{ title: string; }[]>({
         sql: 'SELECT title FROM BookRepeated WHERE title IN (:?, :?) OR title = :?',
         values: [
           'aspeci;al',
@@ -503,7 +486,7 @@ describe(`MysqlReq`, function() {
       });
       await req.removeConnection();
       expect(req.hasConnection()).to.be.equal(false);
-      const actionResult = await req.query({
+      const actionResult = await req.query<[{ title: string}[], { ID: number; title: string; author: string; }[]]>({
         sql: 'SELECT title FROM BookRepeated WHERE title IN :? OR title = :?',
         values: [
           [
@@ -513,7 +496,6 @@ describe(`MysqlReq`, function() {
           `a'really'); SELECT * FROM Tag WHERE 1=1;`,
         ],
       });
-      console.log(actionResult.error);
       expect(actionResult.value).to.be.an('array');
       await req.removeConnection();
     });
