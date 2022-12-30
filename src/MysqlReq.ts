@@ -24,6 +24,7 @@ export type UserProvidedEnvVarNames = {
   database: string;
   charset?: string;
   collation?: string;
+  multipleStatements?: boolean;
 };
 
 export type ConfigPropsOptional = {
@@ -33,6 +34,7 @@ export type ConfigPropsOptional = {
   database?: string;
   charset?: string;
   collation?: string;
+  multipleStatements?: boolean;
 }
 
 export type RequestorEnvVarNames = {
@@ -429,17 +431,22 @@ export default class MysqlReq {
 
   static extractConfigFromEnv(env: any, envVarNames?: UserProvidedEnvVarNames): ConfigPropsOptional {
     const envVNames = envVarNames || MysqlReq.getDefaultEnvVarNames();
-    return Object.keys(envVNames).reduce((res, mysqljsConfKey, i) => {
+    const convertToBoolean = { multipleStatements: true };
+    const config: ConfigPropsOptional = Object.keys(envVNames).reduce((res, mysqljsConfKey, i) => {
       const envVarName = (envVNames as { [k: string]: string; })[mysqljsConfKey];
       return (envVarName && env[envVarName] !== undefined)
       ? {
         ...res,
-        [mysqljsConfKey]: env[envVarName]
+        [mysqljsConfKey]: convertToBoolean.hasOwnProperty(mysqljsConfKey)
+          ? !(env[envVarName] === 'false' || env[envVarName] === '0')
+          : env[envVarName],
       }
       : {
         ...res,
       };
     }, {});
+
+    return config;
   }
 
   static isMissingConfigProps(config: ConfigPropsOptional): boolean {

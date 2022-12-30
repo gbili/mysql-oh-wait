@@ -45,6 +45,7 @@ process.env.DB_HOST = 'myhost'
 process.env.DB_USER = 'myuser'
 process.env.DB_PASSWORD = 'mypwd'
 process.env.DB_NAME = 'mydbname'
+process.env.MULTIPLE_STATEMENTS = 1
 ```
 
 Or you can store these in a `.env` file. In which case the `import 'dotenv/config';` statement will load them for you. (You need to `npm i -P dotenv` for this to work.

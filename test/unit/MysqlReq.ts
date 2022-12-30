@@ -136,7 +136,8 @@ describe(`MysqlReq`, function() {
         DB_PASSWORD: 'password',
         DB_NAME: 'test_db',
         DB_CHARSET: 'utf8mb4',
-        DB_COLLATION: 'utf8mb4_general_ci'
+        DB_COLLATION: 'utf8mb4_general_ci',
+        MULTIPLE_STATEMENTS: 'true',
       };
       expect(MysqlReq.extractConfigFromEnv(env)).to.deep.equal({
         host: 'localhost',
@@ -144,7 +145,24 @@ describe(`MysqlReq`, function() {
         password: 'password',
         database: 'test_db',
         charset: 'utf8mb4',
-        collation: 'utf8mb4_general_ci'
+        collation: 'utf8mb4_general_ci',
+        multipleStatements: true,
+      });
+    });
+    it('should be able to load multipleStatements "0" config from env and get proper boolean value', async function() {
+      const env = {
+        MULTIPLE_STATEMENTS: '0',
+      };
+      expect(MysqlReq.extractConfigFromEnv(env)).to.deep.equal({
+        multipleStatements: false,
+      });
+    });
+    it('should be able to load multipleStatements "false" config from env and get proper boolean value', async function() {
+      const env = {
+        MULTIPLE_STATEMENTS: 'false',
+      };
+      expect(MysqlReq.extractConfigFromEnv(env)).to.deep.equal({
+        multipleStatements: false,
       });
     });
   });
