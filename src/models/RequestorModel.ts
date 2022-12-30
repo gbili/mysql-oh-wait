@@ -29,9 +29,9 @@ export default class RequestorModel extends RequestorCapability {
     return _events;
   }
 
-  static async query(params: ReqQueryOptions) {
+  static async query<T>(params: ReqQueryOptions) {
 
-    const actionResult = await RequestorModel.getRequestor().query(params);
+    const actionResult = await RequestorModel.getRequestor().query<T>(params);
 
     if (actionResult.error) {
       RequestorModel.getEvents().emit('RequestorModel:query:error', actionResult.error);
