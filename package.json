@@ -5,11 +5,6 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
-    "coverage:generate": "nyc npm run test",
-    "coverage:check": "nyc check-coverage --statements 75 --branches 60 --functions 83 --lines 87",
-    "coverage:report": "nyc report --reporter=text-lcov > coverage.lcov",
-    "coverage:report:upload": "CODECOV_TOKEN=\"$(grep \"CODECOV_TOKEN=\" .env | cut -d'=' -f2)\" codecov",
-    "coverage": "npm run coverage:generate && npm run coverage:check && npm run coverage:report && npm run coverage:report:upload",
     "test": "tsc && mocha --recursive ./build/test",
     "develop": "nodemon ./build/src/index.js",
     "serve": "NODE_ENV=production node ./build/src/index.js"
