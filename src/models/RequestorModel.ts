@@ -29,9 +29,9 @@ export default class RequestorModel extends RequestorCapability {
     return _events;
   }
 
-  static async query<T>(params: ReqQueryOptions) {
+  static async query<RawReturnType, InferredTransformedType = RawReturnType>(params: ReqQueryOptions<RawReturnType, InferredTransformedType>) {
 
-    const actionResult = await RequestorModel.getRequestor().query<T>(params);
+    const actionResult = await RequestorModel.getRequestor().query<RawReturnType, InferredTransformedType>(params);
 
     if (actionResult.error) {
       RequestorModel.getEvents().emit('RequestorModel:query:error', actionResult.error);

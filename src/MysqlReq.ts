@@ -3,10 +3,9 @@ import { ActionResult } from './ActionResult';
 import OhWaitError from './OhWaitError';
 import QueryFormat, { Values } from './QueryFormat';
 
-export interface ReqQueryOptions extends QueryOptions {
-  after?: (p: any) => any;
+export interface ReqQueryOptions<RawType, TransformedType = RawType> extends QueryOptions {
+  after?: (p: RawType) => TransformedType;
 }
-
 
 export type ExecutorParam = <S extends (value?: any) => any, T extends (reason?: any) => any>(resolve: S, reject: T) => void
 
@@ -90,17 +89,6 @@ export type MysqlReqInjectProps = {
   env?: any;
   envVarNames?: UserProvidedEnvVarNames;
 };
-
-// export interface MysqlReqInterface {
-//   query<T>(
-//     { sql, values }: { sql: QueryOptions["sql"]; values?: QueryOptions["values"]; },
-//     after?: undefined
-//   ): Promise<ActionResult<T>>;
-//   query<T extends (arg: any) => any>(
-//     { sql, values }: { sql: QueryOptions["sql"]; values?: QueryOptions["values"]; },
-//     after: T extends (arg: infer A) => infer U ? (arg: A) => U : undefined
-//   ): Promise<ActionResult<ReturnType<T>>>;
-// }
 
 export default class MysqlReq {
   public logger: LoggerInterface;
@@ -306,7 +294,13 @@ export default class MysqlReq {
     return this.getActionResult({ value: { didDisconnect: false } });
   }
 
-  async query<T>({ sql, values }: QueryOptions): Promise<ActionResult<T>> {
+  /**
+   * Do not manually set the second param type InferredTransformedType,
+   * it is inferred from the after callback when provided
+   * @param param0
+   * @returns
+   */
+  async query<RawReturnType, InferredTransformedType = RawReturnType>({ sql, values, after }: ReqQueryOptions<RawReturnType, InferredTransformedType>): Promise<ActionResult<InferredTransformedType>> {
 
     try {
 
@@ -320,12 +314,16 @@ export default class MysqlReq {
       }
 
       const connection = this.getConnection();
-      const result: T = await this.waitForLocks('::query():' + sql, (resolve, reject) => {
+      const result: RawReturnType = await this.waitForLocks('::query():' + sql, (resolve, reject) => {
         const cb: queryCallback = (err, result) => err ? reject(err) : resolve(result);
         values ? connection.query(sql, values, cb) : connection.query(sql, cb);
-      }) as T;
+      }) as RawReturnType;
 
-      return this.getActionResult({ value: result });
+      if (typeof after !== 'undefined') {
+        return this.getActionResult({ value: after(result) });
+      }
+
+      return this.getActionResult({ value: result as unknown as InferredTransformedType });
 
     } catch (err) {
       this.getLogger().debug(this.getThreadId(), 'this.query() failed', err);
@@ -456,3 +454,29 @@ export default class MysqlReq {
   }
 
 }
+
+// TODO Desired usage
+// (async function () {
+// const a = new MysqlReq();
+//   // const r1: Promise<ActionResult<number>>
+//   const r1 = a.query<{ a: string, b: string }[]>({
+//     sql: `
+//     // some sql query returning rows of a, b
+//     `,
+//     values: { userUUID: '' },
+//     after: (res: { a: string, b: string }[]) => {
+//       return 21;
+//     },
+//   });
+
+//   // const r2: ActionResult<{
+//   //   a: string;
+//   //   b: string;
+//   // }[]>
+//   const r2 = await a.query<{ a: string, b: string }[]>({
+//     sql: `
+//     // some sql query returning rows of a, b
+//     `,
+//     values: { userUUID: '' },
+//   });
+// })

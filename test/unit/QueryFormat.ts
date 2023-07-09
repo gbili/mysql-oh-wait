@@ -114,7 +114,7 @@ describe(`QueryFormat`, function() {
     });
   });
 
-  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: ['a', 'b'] })`, function() {
+  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: ['a', 'b'], ph2: 'c' } })`, function() {
     const expected = `('a', 'b') AND 'c'`;
     it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
@@ -122,7 +122,7 @@ describe(`QueryFormat`, function() {
     });
   });
 
-  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: [null, 'b'] })`, function() {
+  describe(`QueryFormat.queryFormat(':ph1 and :ph2', { ph1: [null, 'b'], ph2: 'c' })`, function() {
     const expected = `(NULL, 'b') AND 'c'`;
     it(`should return ${expected}`, async function() {
       const queryFormat = new QueryFormat((fakeEscape as Connection));
