@@ -9,11 +9,6 @@
     "develop": "nodemon ./build/src/index.js",
     "serve": "NODE_ENV=production node ./build/src/index.js"
   },
-  "config": {
-    "ghooks": {
-      "pre-commit": "npm run test && npm run coverage:generate && npm run coverage:check"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/gbili/mysql-oh-wait.git"
