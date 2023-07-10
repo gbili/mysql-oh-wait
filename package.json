@@ -6,7 +6,6 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "test": "tsc && mocha --recursive ./build/test",
-    "develop": "nodemon ./build/src/index.js",
     "serve": "NODE_ENV=production node ./build/src/index.js"
   },
   "repository": {
