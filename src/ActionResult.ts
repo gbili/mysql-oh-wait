@@ -17,6 +17,17 @@ export type ActionResultError<T> = {
   info: ConnectionInfo;
 }
 
+export type OkPacket = {
+  fieldCount: number;
+  affectedRows: number;
+  insertId: number;
+  serverStatus: number;
+  warningCount: number;
+  message: string;
+  protocol41: boolean;
+  changedRows: number;
+};
+
 export type ActionResult<T> = ActionResultSuccess<T> | ActionResultError<T>;
 
 export function isActionResultError<T>(ar: ActionResult<T>): ar is ActionResultError<T> {
