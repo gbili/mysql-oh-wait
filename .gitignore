@@ -1,5 +1,6 @@
 # build
 build/
+.DS_Store
 # nyc
 .nyc_output
 converage

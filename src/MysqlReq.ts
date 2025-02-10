@@ -21,6 +21,7 @@ export type UserProvidedEnvVarNames = {
   user: string;
   password: string;
   database: string;
+  port?: number;
   charset?: string;
   collation?: string;
   multipleStatements?: boolean;
@@ -28,6 +29,7 @@ export type UserProvidedEnvVarNames = {
 
 export type ConfigPropsOptional = {
   host?: string;
+  port?: number;
   user?: string;
   password?: string;
   database?: string;
@@ -39,6 +41,7 @@ export type ConfigPropsOptional = {
 export type RequestorEnvVarNames = {
   host: 'DB_HOST';
   user: 'DB_USER';
+  port: 'DB_PORT';
   password: 'DB_PASSWORD';
   database: 'DB_NAME';
   charset: 'DB_CHARSET';
@@ -49,6 +52,7 @@ export type RequestorEnvVarNames = {
 export type ConnectionConfigOptions = {
   host: string | null;
   user: string | null;
+  port: number | null;
   password: string | null;
   database: string | null;
   charset: string | null;
@@ -419,6 +423,7 @@ export default class MysqlReq {
     return {
       host: 'DB_HOST',
       user: 'DB_USER',
+      port: 'DB_PORT',
       password: 'DB_PASSWORD',
       database: 'DB_NAME',
       charset: 'DB_CHARSET',
@@ -430,14 +435,18 @@ export default class MysqlReq {
   static extractConfigFromEnv(env: any, envVarNames?: UserProvidedEnvVarNames): ConfigPropsOptional {
     const envVNames = envVarNames || MysqlReq.getDefaultEnvVarNames();
     const convertToBoolean = { multipleStatements: true };
+    const convertToNumber = { port: 3306 };
     const config: ConfigPropsOptional = Object.keys(envVNames).reduce((res, mysqljsConfKey, i) => {
       const envVarName = (envVNames as { [k: string]: string; })[mysqljsConfKey];
       return (envVarName && env[envVarName] !== undefined)
       ? {
         ...res,
         [mysqljsConfKey]: convertToBoolean.hasOwnProperty(mysqljsConfKey)
-          ? !(env[envVarName] === 'false' || env[envVarName] === '0')
-          : env[envVarName],
+          ? (env[envVarName] === 'false' || env[envVarName] === '0')
+          : (convertToNumber.hasOwnProperty(mysqljsConfKey) && typeof env[envVarName] === 'string'
+            ? parseInt(env[envVarName])
+            : env[envVarName]
+          ),
       }
       : {
         ...res,
