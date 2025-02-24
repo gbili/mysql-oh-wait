@@ -1,4 +1,4 @@
-import { Connection } from "mysql";
+import { Connection } from "mysql2/promise";
 
 type Escape = Connection["escape"];
 
@@ -133,9 +133,8 @@ export default class QueryFormat {
   }
 
   queryFormat(query: string, values?: Values): string {
-
     if (!query) throw new Error('A query must be provided');
-    if (!values) return query;
+    if (!values || (Array.isArray(values) && values.length <= 0)) return query;
 
     this.values = values;
 
@@ -156,7 +155,8 @@ export default class QueryFormat {
     return query.replace(regex, this.replacer);
   }
 
-  replacer(ref: string, key: string): string {
+  replacer(ref: string | undefined, key: string): string {
+    if (typeof ref === 'undefined') throw new Error('Unsupported custom placeholder value');
     if (this.values === null) throw new Error('Need to pass the values in first');
     let ret;
     // question mark
@@ -221,6 +221,9 @@ export default class QueryFormat {
       } else if (isStringableMixedObj(this.values)) {
           // i) values is a mix of different types
         ret = this.mapEscape((this.values as any)[key], 0, ref); // stringable[]
+      } else {
+        throw new Error(
+          `Provided named ref: '${ref}' with unsupported value: ${(this.values as any)[key]}`);
       }
     } else {// named ref not present in values (dont replace anything)
       throw new Error(
@@ -239,14 +242,14 @@ export default class QueryFormat {
     } else if (isStringableArrayArray(ret)) {
       return this.joinUseParenthesis(ret);
     } else {
-      console.log('========== ERRAH ============');
+      console.log('========== ERROR ============');
       console.log('An error is going to be raised, probably because you passed an object with more props than used');
       console.log('REF   : : : ', ref);
       console.log('KEY   : : : ', key);
       console.log('VALUES: : : ', this.values);
       console.log('RETRET: : : ', ret);
       throw new Error(
-        `Ret: ${ret} is somehow undefined, not all cases have been handled, you are trying an unsupported usecase
+        `Ref: ${ref}, Key: ${key}, Ret: ${ret} is somehow undefined, not all cases have been handled, you are trying an unsupported usecase
         Provided named ref: '${ref}' without corresponding value, keys are: ${Object.keys(this.values).join(', ')}
         values: ${Object.values(this.values).join(', ')}
         hasOwnProperty : ${(this.values.hasOwnProperty(key) ? 'yes': 'no')}

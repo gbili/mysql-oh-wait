@@ -1,5 +1,5 @@
+import { ActionResult, SimpleQueryResult } from '../ActionResult';
 import RequestorCapability, { InjectRequestorInterface } from './RequestorCapability';
-import { ReqQueryOptions } from '../MysqlReq';
 
 export interface EventsInterface {
   emit: (eventName: string, data: any) => void;
@@ -29,14 +29,26 @@ export default class RequestorModel extends RequestorCapability {
     return _events;
   }
 
-  static async query<RawReturnType, InferredTransformedType = RawReturnType>(params: ReqQueryOptions<RawReturnType, InferredTransformedType>) {
-
-    const actionResult = await RequestorModel.getRequestor().query<RawReturnType, InferredTransformedType>(params);
-
+  static async query<T extends SimpleQueryResult>(params: {
+    sql: string;
+    values?: any;
+  }): Promise<ActionResult<T>>;
+  // Overload 2: When `after` is provided
+  static async query<T extends SimpleQueryResult, Z>(params: {
+    sql: string;
+    values?: any;
+    after: (res: T) => Z;
+  }): Promise<ActionResult<Z>>;
+  // Implementation
+  static async query<T extends SimpleQueryResult, Z>(params: {
+    sql: string;
+    values?: any;
+    after?: (res: T) => Z;
+  }) {
+    const actionResult = await RequestorModel.getRequestor().query(params);
     if (actionResult.error) {
       RequestorModel.getEvents().emit('RequestorModel:query:error', actionResult.error);
     }
-
     return actionResult;
   }
 

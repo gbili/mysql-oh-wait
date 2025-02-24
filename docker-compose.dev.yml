@@ -1,0 +1,39 @@
+services:
+
+  db:
+    image: mariadb:10.9
+    container_name: "mysql-oh-wait-${DB_HOST}"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mymysql.cnf:/etc/mysql/conf.d/my.cnf
+      - ./mymysql.cnf:/etc/mysql/my.cnf
+      - ./test/unit/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    command: "--default-authentication-plugin=mysql_native_password --character-set-server=${DB_CHARSET} --collation-server=${DB_COLLATION}"
+
+  db_pma:
+    image: phpmyadmin/phpmyadmin
+    container_name: "mysql-oh-wait-${DB_HOST}_pma"
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: "${DB_HOST}"
+      PMA_PORT: ${DB_PORT}
+      UPLOAD_LIMIT: "${PMA_UPLOAD_LIMIT}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "8090:80"
+    restart: always
+
+volumes:
+  mariadb_data:
