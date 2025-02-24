@@ -1,6 +1,6 @@
 {
   "name": "mysql-oh-wait",
-  "version": "v0.19.1",
+  "version": "v0.19.2",
   "description": "mysql wrapper with async / await returning results, single connection waranty per process",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -15,12 +15,8 @@
   "keywords": [
     "nodejs",
     "mysql",
-    "async",
-    "await",
-    "promise",
-    "return",
     "query",
-    "wrapper"
+    "params"
   ],
   "author": "Guillermo Pages <mail@guillermo.at> (https://guillermo.at)",
   "license": "MIT",
@@ -38,8 +34,7 @@
     "chai": "^5.2.0",
     "dotenv": "^16.4.7",
     "mocha": "^11.1.0",
-    "mysql": "^2.18.1",
-    "saylo": "0.6.1",
+    "saylo": "0.6.2",
     "uuid": "11.1.0"
   },
   "peerDependencies": {
