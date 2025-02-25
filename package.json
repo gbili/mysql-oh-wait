@@ -1,12 +1,12 @@
 {
   "name": "mysql-oh-wait",
-  "version": "v0.19.3",
+  "version": "v0.19.4",
   "description": "mysql wrapper with async / await returning results, single connection waranty per process",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
     "test": "tsc && mocha --recursive ./build/test",
-    "serve": "NODE_ENV=production node ./build/src/index.js"
+    "prepublish": "tsc"
   },
   "repository": {
     "type": "git",
@@ -34,10 +34,10 @@
     "chai": "^5.2.0",
     "dotenv": "^16.4.7",
     "mocha": "^11.1.0",
-    "saylo": "0.6.2",
     "uuid": "11.1.0"
   },
   "peerDependencies": {
+    "saylo": "0.6.2",
     "mysql2": "^3.12.0"
   },
   "directories": {
