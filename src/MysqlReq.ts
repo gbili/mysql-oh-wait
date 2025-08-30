@@ -111,4 +111,7 @@ export class MysqlReq {
 
 }
 
+// Export instance type for ESM/CJS compatibility
+export type MysqlReqInstance = MysqlReq;
+
 export default MysqlReq;
