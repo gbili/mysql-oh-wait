@@ -30,15 +30,16 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "22.13.5",
     "@types/uuid": "10.0.0",
-    "mysql2": "^3.14.3",
     "chai": "^6.0.1",
-    "dotenv": "^17.2.1",
-    "mocha": "^11.7.1",
-    "uuid": "11.1.0"
+    "dotenv": "^17.2.2",
+    "mocha": "^11.7.2",
+    "mysql2": "^3.15.0",
+    "saylo": "^0.6.2",
+    "uuid": "13.0.0"
   },
   "peerDependencies": {
-    "saylo": ">=0.5.0",
-    "mysql2": ">=3.0.0"
+    "mysql2": ">=3.0.0",
+    "saylo": ">=0.5.0"
   },
   "peerDependenciesMeta": {
     "saylo": {
